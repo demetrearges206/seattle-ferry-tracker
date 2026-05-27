@@ -117,20 +117,48 @@ Route codes: `SEA-BI` = Seattle-Bainbridge, `BI-SEA` = Bainbridge-Seattle
 --teal: #58a6ff      /* accent/links */
 ```
 
+## Refresh cadence
+
+```
+DOMContentLoaded
+  → render cached schedule immediately (wsf_sched_v1) if present
+  → refresh(!bootCache)         ← full refresh; skips schedule fetch if cache hit
+
+setInterval(refresh(false), 60s)      ← vessels + wait times only
+setInterval(refresh(true),  10min)    ← full refresh including schedule
+setInterval(updateStaleLabel, 60s)    ← re-renders "Updated Xm ago" without fetching
+cdTimer = setInterval(updateCountdowns, 10s)  ← countdown pills only
+```
+
+`refresh(fullRefresh)` uses `Promise.allSettled` so a single API failure doesn't block the rest. Each endpoint's result is checked individually; missing data falls back to last known good state or safe default (`[]` / `null`).
+
+## localStorage keys
+
+| Key | Contents | TTL |
+|-----|----------|-----|
+| `wsf_sched_v1` | `{ date: "YYYY-MM-DD", data: <raw schedule> }` | Invalidated when `date` ≠ today |
+| `ferry_tip_v1` | `"1"` | Permanent — marks "Add to Home Screen" tip as shown |
+
+## Map implementation
+
+- **Instance vars:** `leafMap` (main Leaflet map, `#ferry-map`), `miniMap` (overview inset)
+- **Init:** called once on `DOMContentLoaded` via `initMap()`. The container must be non-zero size before init — the main map is always visible at load so this is fine. The mini-map uses a 30ms timeout after its container becomes visible before calling `miniMap.invalidateSize()`.
+- **Vessel markers:** circle markers placed at `[Lat, Lon]` from `vesselList`. Marker color: green (underway), amber (docked), grey (out of service).
+- **Rule:** whenever the map container is hidden then re-shown, call `leafMap.invalidateSize({ reset: true })`. This is already wired to the vessel section toggle (`#vesselLabel` button). Don't skip it — Leaflet's tile grid goes blank on resize without it.
+- **Tile layer:** OpenStreetMap tiles (`https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png`). No API key required.
+
+## How to start a new cloud session (code.claude.com)
+
+1. Go to [code.claude.com](https://code.claude.com) and create a new session for the `demetrearges206/seattle-ferry-tracker` repo.
+2. Before starting, go to **Environment settings → Environment variables** and add:
+   - `FIGMA_ACCESS_TOKEN` = your Figma personal access token
+   - Get the token at figma.com → Account Settings (avatar top-left) → Personal access tokens → Generate new token (read-only scope is sufficient)
+3. The `.claude/settings.json` in this repo configures Figma MCP automatically. Once `FIGMA_ACCESS_TOKEN` is set in the environment, `npx @figma/mcp` will pick it up and `/mcp` will show the Figma server as connected.
+4. To verify Figma MCP is live, type `/mcp` in Claude Code — "figma" should appear in the list.
+
 ## Known issues / open threads
 
-- **Figma MCP**: To be configured once user has their Figma API token. Add to `.claude/settings.json`:
-  ```json
-  {
-    "mcpServers": {
-      "figma": {
-        "command": "npx",
-        "args": ["-y", "@figma/mcp"],
-        "env": { "FIGMA_ACCESS_TOKEN": "<your-token>" }
-      }
-    }
-  }
-  ```
+- **Figma MCP**: Configured in `.claude/settings.json`. Requires `FIGMA_ACCESS_TOKEN` set as an environment variable in the cloud session (see "How to start a new cloud session" above). No further code changes needed.
 - **CORS on `file://`**: Live API data won't load when opening ferry.html directly from disk in some browsers. Use `npx serve .` for local dev.
 - **Mobile cache**: After deploy, iOS Safari aggressively caches. Hard-clear or append `?bust=N` to URL to force reload.
 - **API key**: The default WSDOT demo key is public and shared. May occasionally rate-limit during high traffic. If needed, register for a key at wsdot.wa.gov.
