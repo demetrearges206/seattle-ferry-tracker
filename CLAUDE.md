@@ -171,6 +171,10 @@ cdTimer = setInterval(updateCountdowns, 10s)  ← countdown pills only
 4. GitHub Pages auto-deploys in ~30s
 5. Remind user to hard-clear mobile cache if needed
 
+## User preferences
+
+- **Always merge PRs automatically** after pushing — don't wait for the user to do it manually. Squash-merge, then close any superseded PRs from previous sessions.
+
 ## Anti-regression notes
 
 - **Never use `lv.Eta` for future scheduled trips** — the live ETA is only valid for the vessel's current active trip. Upcoming rows always use `d.arrive` (scheduled time).
