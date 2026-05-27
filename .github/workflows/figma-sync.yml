@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       figma_urls:
-        description: "Comma-separated Figma node URLs (e.g. https://www.figma.com/design/ABC/File?node-id=1-2)"
+        description: "Figma node URLs — comma or newline separated, @ prefix OK, extra text ignored"
         required: true
         type: string
 

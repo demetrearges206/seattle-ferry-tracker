@@ -19,14 +19,21 @@ def figma_request(path):
 
 
 def parse_urls(urls_str):
-    """Returns dict of file_key -> [node_ids in colon format]."""
+    """Returns dict of file_key -> [node_ids in colon format].
+
+    Accepts URLs comma- or newline-separated, with or without @ prefix,
+    and tolerates surrounding prose (only lines containing a Figma URL are used).
+    """
     file_nodes = {}
-    for url in urls_str.split(","):
-        url = url.strip()
-        file_match = re.search(r"/design/([^/?]+)", url) or re.search(r"/file/([^/?]+)", url)
-        node_match = re.search(r"node-id=([^&]+)", url)
+    # Split on commas and newlines, then scan each token for a Figma URL
+    tokens = re.split(r"[,\n]+", urls_str)
+    for token in tokens:
+        token = token.strip().lstrip("@").strip()
+        file_match = re.search(r"/design/([^/?]+)", token) or re.search(r"/file/([^/?]+)", token)
+        node_match = re.search(r"node-id=([^&\s]+)", token)
         if not file_match or not node_match:
-            print(f"WARNING: could not parse URL: {url}")
+            if token:
+                print(f"  (skipping non-URL token: {token[:60]})")
             continue
         file_key = file_match.group(1)
         node_id = urllib.parse.unquote(node_match.group(1)).replace("-", ":")
