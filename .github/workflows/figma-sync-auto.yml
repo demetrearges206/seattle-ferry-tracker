@@ -1,0 +1,32 @@
+name: Figma Sync (auto)
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'figma-specs/request.txt'
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Fetch Figma data
+        env:
+          FIGMA_API_KEY: ${{ secrets.FIGMA_API_KEY }}
+          FIGMA_URLS: ${{ github.event.head_commit.message }}
+        run: |
+          export FIGMA_URLS="$(cat figma-specs/request.txt)"
+          python3 .github/scripts/figma_sync.py
+
+      - name: Commit specs to repo
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add figma-specs/
+          git diff --staged --quiet && echo "Nothing to commit" || \
+            git commit -m "chore: sync Figma specs [skip ci]" && git push
