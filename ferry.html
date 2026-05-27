@@ -746,37 +746,32 @@ svg.leaflet-image-layer.leaflet-interactive path {
     .tab {
       flex: 1; padding: 11px 6px; background: none;
       border: none; border-bottom: 2px solid transparent;
-      color: var(--mid); font-size: 12px; font-weight: 600; letter-spacing: 0.3px;
+      color: var(--mid); font-size: 12px; font-weight: 700; letter-spacing: 0.3px;
       cursor: pointer; transition: color 0.15s, border-color 0.15s;
       -webkit-tap-highlight-color: transparent; text-align: center; white-space: nowrap;
     }
     .tab.active { color: var(--teal); border-bottom-color: var(--teal); }
 
-    /* ── Alert Banner ────────────────────────────────────────── */
-    .alert-banner {
-      margin: 12px 16px 0;
+    /* ── Alerts section ─────────────────────────────────────── */
+    .alerts-card {
+      margin: 0 16px;
       border-radius: var(--radius);
-      background: rgba(255,84,73,0.1);
-      border: 1px solid rgba(255,84,73,0.3);
-      padding: 12px 14px;
-      font-size: 12px;
-      line-height: 1.5;
-      color: var(--white);
+      background: var(--navy-card);
+      border: 1px solid var(--border);
+      padding: 12px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
     }
-    .alert-banner.hidden { display: none; }
-    .alert-banner.warn {
-      background: rgba(255,201,71,0.1);
-      border-color: rgba(255,201,71,0.3);
+    .alert-item {
+      font-size: 13px; color: var(--text); line-height: 1.45;
     }
-    .alert-title {
-      font-size: 10px; font-weight: 700; letter-spacing: 1.4px;
-      text-transform: uppercase; color: var(--red); margin-bottom: 5px;
-      display: flex; align-items: center; gap: 5px;
+    .alert-item + .alert-item {
+      border-top: 1px solid var(--border); padding-top: 10px;
     }
-    .alert-banner.warn .alert-title { color: var(--amber); }
-    .alert-item { padding: 3px 0; color: var(--mid); font-size: 12px; }
-    .alert-item + .alert-item { border-top: 1px solid var(--border); margin-top: 4px; padding-top: 7px; }
-    .alert-item strong { display: block; color: var(--white); margin-bottom: 2px; }
+    .alert-empty {
+      font-size: 13px; color: var(--mid);
+    }
 
     /* ── Layout ──────────────────────────────────────────────── */
     .scroll-body { overflow-y: auto; -webkit-overflow-scrolling: touch; }
@@ -917,21 +912,6 @@ svg.leaflet-image-layer.leaflet-interactive path {
     }
     #miniMapEl { height: 190px; }
 
-    /* ── Wait Times ──────────────────────────────────────────── */
-    .wait-row {
-      margin: 0 16px; border-radius: var(--radius);
-      border: 1px solid var(--border); overflow: hidden;
-    }
-    .wait-cell {
-      padding: 12px 16px; background: var(--navy-card);
-      border-bottom: 1px solid var(--border);
-    }
-    .wait-cell:last-child { border-bottom: none; }
-    .wait-route { font-size: 12px; font-weight: 700; color: var(--teal); margin-bottom: 3px; }
-    .wait-note  { font-size: 13px; color: var(--white); line-height: 1.4; }
-    .wait-meta  { font-size: 10px; color: var(--mid); margin-top: 4px; }
-    .wait-na    { font-size: 12px; color: var(--dim); }
-
     /* ── Map ─────────────────────────────────────────────────── */
     .map-section { margin: 0 16px; }
     .map-frame { border-radius: var(--radius); overflow: hidden; border: 1px solid var(--border); height: 300px; position: relative; }
@@ -1046,14 +1026,12 @@ svg.leaflet-image-layer.leaflet-interactive path {
 </header>
 
 <div class="tabs">
-  <button class="tab active" data-dir="SEA-BI" id="tabSeaBi">Seattle → Bainbridge</button>
-  <button class="tab" data-dir="BI-SEA" id="tabBiSea">Bainbridge → Seattle</button>
+  <button class="tab active" data-dir="SEA-BI" id="tabSeaBi">SEA → BI</button>
+  <button class="tab" data-dir="BI-SEA" id="tabBiSea">BI → SEA</button>
 </div>
 
 <div class="scroll-body">
   <main class="main">
-
-    <div id="alertBanner" class="alert-banner hidden"></div>
 
     <div id="schedFeatured">
       <div class="loading-wrap"><div class="ring"></div><span id="loadingMsg">Fetching today's schedule…</span></div>
@@ -1073,9 +1051,9 @@ svg.leaflet-image-layer.leaflet-interactive path {
 
     <div id="schedContent"></div>
 
-    <div class="section-label">Terminal Wait Times</div>
-    <div id="waitContent">
-      <div style="padding:0 16px 8px"><div style="height:56px;border-radius:var(--radius);background:var(--navy-card);border:1px solid var(--border)"></div></div>
+    <div class="section-label">Alerts</div>
+    <div id="alertsContent">
+      <div style="padding:0 16px 8px"><div style="height:72px;border-radius:var(--radius);background:var(--navy-card);border:1px solid var(--border)"></div></div>
     </div>
 
     <div id="homeTip" class="home-tip" style="margin-top:16px">
@@ -1100,7 +1078,7 @@ svg.leaflet-image-layer.leaflet-interactive path {
 'use strict';
 
 // ── Build version — bump this string on every deploy ─────
-const BUILD = 'r36';
+const BUILD = 'r37';
 
 // ── Config ───────────────────────────────────────────────
 const API_KEY   = 'ff39cd9c-729e-40ac-b740-1cebec6226f9';
@@ -1156,6 +1134,7 @@ let vesselList   = [];
 let routeId      = 9;       // overridden dynamically via schedroutes
 let disruptions  = [];
 let waitData     = [];
+let bulletinData = [];
 let direction    = 'SEA-BI';
 let schedOpen        = false;
 let vesselStripOpen  = false;
@@ -1319,6 +1298,10 @@ async function loadWaitTimes() {
   return apiFetch(apiUrl(TERM_BASE, 'terminalwaittimes'));
 }
 
+function fetchBulletins() {
+  return apiFetch(apiUrl(SCHED_BASE, 'schedulebulletins'));
+}
+
 // ── Process schedroutes response ──────────────────────────
 function processSchedRoutes(data) {
   if (!data || !Array.isArray(data)) return;
@@ -1349,59 +1332,33 @@ function processSchedRoutes(data) {
   });
 }
 
-// ── Alert banner ─────────────────────────────────────────
+// ── Alerts ────────────────────────────────────────────────
 function renderAlerts() {
-  const banner = document.getElementById('alertBanner');
-  if (!disruptions.length) {
-    banner.classList.add('hidden');
-    return;
+  const wrap = document.getElementById('alertsContent');
+  if (!wrap) return;
+
+  const items = [];
+  // Route service disruptions (from schedroutes)
+  disruptions.forEach(d => items.push(d.title));
+  // Bulletins from schedulebulletins API (filter to SEA-BI route)
+  if (Array.isArray(bulletinData)) {
+    bulletinData.forEach(b => {
+      const text = (b.BulletinTitle || b.BulletinText || '').trim();
+      if (!text) return;
+      const route = (b.BulletinTitle || '').toLowerCase();
+      if (route && !route.includes('sea') && !route.includes('bainbridge') && !route.includes('seattle')) return;
+      if (!items.includes(text)) items.push(text);
+    });
   }
-  const isBulletin = disruptions.some(d => d.bulletin);
-  banner.className = `alert-banner${isBulletin ? '' : ' warn'}`;
-  banner.innerHTML =
-    `<div class="alert-title">${isBulletin ? '⚠ Service Alert' : '⚠ Advisory'}</div>` +
-    disruptions.map(d => `<div class="alert-item"><strong>${d.title}</strong></div>`).join('');
-}
 
-// ── Wait times ────────────────────────────────────────────
-function renderWaitTimes() {
-  const wrap = document.getElementById('waitContent');
-  const deptTermId = direction === 'SEA-BI' ? TERMINALS.SEA.id : TERMINALS.BI.id;
-  const deptName   = direction === 'SEA-BI' ? 'Seattle (Colman Dock)' : 'Bainbridge Island';
-
-  const terminal = waitData.find(t => t.TerminalID === deptTermId);
-  const allWaits = terminal?.WaitTimes || [];
-
-  // Only show the Bainbridge ↔ Seattle route, not Bremerton or others
-  const biWaits = allWaits.filter(wt =>
-    (wt.RouteName || '').toLowerCase().includes('bainbridge')
-  );
-  const waits = biWaits.length ? biWaits : allWaits.slice(0, 1); // graceful fallback
-
-  if (!waits.length) {
-    wrap.innerHTML = `
-      <div class="wait-row">
-        <div class="wait-cell">
-          <div class="wait-route">Seattle / Bainbridge Island</div>
-          <span class="wait-na">No wait data available</span>
-        </div>
-      </div>`;
+  if (!items.length) {
+    wrap.innerHTML = `<div class="alerts-card"><div class="alert-empty">No active alerts</div></div>`;
     return;
   }
 
-  const rows = waits.map(wt => {
-    const note    = (wt.WaitTimeNotes || '').trim();
-    const updated = wt.WaitTimeLastUpdated ? parseWSDot(wt.WaitTimeLastUpdated) : null;
-    const displayNote = note || 'No current wait information';
-    return `
-      <div class="wait-cell">
-        <div class="wait-route">${wt.RouteName || deptName}</div>
-        <div class="wait-note">${displayNote}</div>
-        <div class="wait-meta">As of ${updated ? fmtTime(updated) : 'recent update'} · ${deptName}</div>
-      </div>`;
-  }).join('');
-
-  wrap.innerHTML = `<div class="wait-row">${rows}</div>`;
+  wrap.innerHTML = `<div class="alerts-card">${
+    items.map(t => `<div class="alert-item">${t}</div>`).join('')
+  }</div>`;
 }
 
 // ── Schedule parsing ──────────────────────────────────────
@@ -1903,11 +1860,11 @@ async function refresh(forceSchedReload) {
   try {
     const needSched = forceSchedReload || !schedData;
 
-    setLoadingMsg(needSched ? 'Connecting to WSDOT API…' : 'Refreshing vessels + wait times…');
+    setLoadingMsg(needSched ? 'Connecting to WSDOT API…' : 'Refreshing vessels…');
 
     // All four calls run in parallel. loadSchedule uses scheduletoday/7/3 (terminal IDs)
     // so it has no dependency on schedroutes completing first.
-    const fetches = [loadVessels(), loadWaitTimes()];
+    const fetches = [loadVessels(), fetchBulletins()];
     if (needSched) fetches.push(loadSchedRoutes(), loadSchedule());
 
     // Hard cap: if ANY fetch hangs past 15s the whole refresh fails visibly
@@ -1917,23 +1874,21 @@ async function refresh(forceSchedReload) {
     const results = await Promise.race([Promise.allSettled(fetches), masterTimeout]);
 
     const vesselsOk = results[0].status === 'fulfilled' && Array.isArray(results[0].value);
-    const waitOk    = results[1].status === 'fulfilled' && Array.isArray(results[1].value);
-    // Always assign — default to [] on failure so downstream finds/filters never throw
-    vesselList = vesselsOk ? results[0].value : [];
-    waitData   = waitOk   ? results[1].value : [];
+    const bulletinsOk = results[1].status === 'fulfilled' && Array.isArray(results[1].value);
+    vesselList   = vesselsOk   ? results[0].value : [];
+    bulletinData = bulletinsOk ? results[1].value : [];
     if (needSched) {
       if (results[2]?.status === 'fulfilled') processSchedRoutes(results[2].value);
       if (results[3]?.status === 'fulfilled') schedData = results[3].value;
     }
 
-    setLoadingMsg(`Vessels: ${vesselsOk ? `${vesselList.length} found` : `✗ ${results[0].reason?.message||'failed'}`} | Wait: ${waitOk ? '✓' : '✗'} | Sched: ${schedData ? `✓ ${schedData.TerminalCombos?.length||0} combos` : '✗ none'}`);
+    setLoadingMsg(`Vessels: ${vesselsOk ? `${vesselList.length} found` : `✗ ${results[0].reason?.message||'failed'}`} | Bulletins: ${bulletinsOk ? '✓' : '✗'} | Sched: ${schedData ? `✓ ${schedData.TerminalCombos?.length||0} combos` : '✗ none'}`);
 
-    if (!schedData) throw new Error(`No schedule data — vessels ${vesselsOk?'ok':'failed'}, wait ${waitOk?'ok':'failed'}`);
+    if (!schedData) throw new Error(`No schedule data — vessels ${vesselsOk?'ok':'failed'}, bulletins ${bulletinsOk?'ok':'failed'}`);
 
     lastUpdate = new Date();
-    renderAlerts();
     renderSchedule();
-    renderWaitTimes();
+    renderAlerts();
     renderVesselStrip();
     updateMap();
     // Show amber "partial" state when vessel API failed but schedule is available
@@ -1965,7 +1920,6 @@ document.addEventListener('DOMContentLoaded', () => {
   if (bootCache) {
     schedData = bootCache;
     renderSchedule();
-    renderWaitTimes();
   }
 
   // fetch live vessels + wait times; only reload schedule if not cached
@@ -1980,7 +1934,7 @@ document.addEventListener('DOMContentLoaded', () => {
       tab.classList.add('active');
       direction = tab.dataset.dir;
       schedOpen = false;
-      renderWaitTimes();
+      renderAlerts();
       if (schedData) renderSchedule();
     });
   });
