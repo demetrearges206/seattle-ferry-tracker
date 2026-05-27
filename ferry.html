@@ -809,50 +809,66 @@ svg.leaflet-image-layer.leaflet-interactive path {
     .empty-state strong { display: block; font-size: 17px; color: var(--white); margin-bottom: 5px; }
 
     /* ── Next Ferry Hero ─────────────────────────────────────── */
+    /* ── Featured vessel card ────────────────────────────── */
     .next-card {
-      margin: 16px 16px 0; border-radius: var(--radius);
-      background: var(--navy-card); border: 1px solid var(--border);
+      margin: 16px 16px 0; border-radius: 14px;
+      background: #0e2040; border: 1px solid rgba(255,255,255,0.07);
       padding: 18px 20px 16px; position: relative; overflow: hidden;
+      display: flex; flex-direction: column; gap: 5px;
     }
-    .next-card::before {
-      content: ''; position: absolute; inset: 0 0 auto 0; height: 3px;
-      background: linear-gradient(90deg, var(--teal) 0%, #2196f3 100%);
-      transform-origin: left;
-      transform: scaleX(var(--bar-w, 0));
-      transition: transform 20s linear;
+    /* Progress bar — bottom edge, width driven by --bar-w (0–1) */
+    .next-card::after {
+      content: ''; position: absolute; bottom: 0; left: 0;
+      height: 6px; width: calc(var(--bar-w, 0) * 100%);
+      background: linear-gradient(90deg, #2196f3, var(--teal));
+      transition: width 20s linear;
     }
-    .next-eyebrow {
-      font-size: 9px; font-weight: 700; letter-spacing: 1.8px;
-      text-transform: uppercase; color: var(--teal); margin-bottom: 10px;
+    .next-card[data-state="at-dock"]::after { background: #2196f3; width: 100%; }
+    /* Header */
+    .nc-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+    .nc-vessel { display: flex; align-items: center; gap: 8px; min-width: 0; }
+    .nc-vessel-icon { font-size: 13px; color: var(--mid); flex-shrink: 0; }
+    .nc-vessel-name {
+      font-size: 12.6px; font-weight: 700; white-space: nowrap;
+      overflow: hidden; text-overflow: ellipsis;
     }
-    .next-body {
+    /* Status badge */
+    .nc-badge {
+      font-size: 11px; font-weight: 700; padding: 4px 8px;
+      border-radius: 8px; white-space: nowrap; flex-shrink: 0;
+    }
+    .nc-badge-dock     { background: rgba(33,150,243,0.12);  color: #2196f3; }
+    .nc-badge-sailing  { background: rgba(0,201,167,0.12);   color: #00c9a7; }
+    .nc-badge-arriving { background: rgba(254,84,73,0.12);   color: #fe5449; }
+    /* Countdown pill */
+    .nc-pill {
+      font-size: 11px; font-weight: 700; padding: 5px 14px;
+      border-radius: 20px; white-space: nowrap; flex-shrink: 0; text-align: center;
+    }
+    .nc-pill-dock     { background: rgba(255,201,71,0.18);   color: #ffc947; }
+    .nc-pill-sailing  { background: rgba(128,153,192,0.18);  color: #8099c0; }
+    .nc-pill-arriving { background: rgba(254,84,73,0.18);    color: #fe5449; }
+    /* Time block */
+    .nc-times {
       display: flex; align-items: flex-end; justify-content: space-between;
-      gap: 8px; margin-bottom: 14px;
+      padding-bottom: 4px;
     }
-    .next-depart { line-height: 1; }
-    .depart-big { font-size: 52px; font-weight: 800; letter-spacing: -2.5px; line-height: 1; }
-    .depart-ampm { font-size: 17px; font-weight: 600; color: var(--mid); margin-left: 2px; letter-spacing: 0; }
-    .arrive-block { text-align: right; padding-bottom: 5px; }
-    .arrive-label { font-size: 10px; color: var(--mid); font-weight: 600; letter-spacing: 0.5px; margin-bottom: 2px; }
-    .arrive-time { font-size: 24px; font-weight: 700; letter-spacing: -1px; color: var(--mid); }
-    .next-footer { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
-    .next-header { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 10px; }
-    .vessel-tag { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--mid); min-width: 0; }
-    .vessel-icon { font-size: 16px; flex-shrink: 0; }
-    .vessel-tag-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .access-icon { font-size: 11px; color: var(--blue); flex-shrink: 0; }
-    .countdown-pill {
-      font-size: 14px; font-weight: 700; padding: 5px 14px; border-radius: 20px;
-      background: var(--teal-dim); color: var(--teal); flex-shrink: 0;
-      transition: background 0.3s, color 0.3s; text-align: center; line-height: 1.2;
+    .nc-primary-label, .nc-secondary-label {
+      font-size: 9px; font-weight: 700; letter-spacing: 1.8px;
+      text-transform: uppercase; margin-bottom: 6px;
     }
-    .countdown-pill.soon { background: rgba(255,201,71,0.18); color: var(--amber); }
-    .countdown-pill.now  { background: rgba(255,84,73,0.18);  color: var(--red); }
-    .countdown-pill.gone { background: rgba(255,255,255,0.06); color: var(--mid); }
-    .cd-sublabel { display: block; font-size: 8px; font-weight: 600; opacity: 0.65;
-                   letter-spacing: 0.6px; text-transform: uppercase; margin-top: 2px; }
-    .return-dep-footer { font-size: 10px; color: var(--mid); margin-top: 10px;
-                         padding-top: 8px; border-top: 1px solid var(--border); letter-spacing: 0.3px; }
+    .nc-primary-label   { color: #fff; }
+    .nc-secondary-label { color: var(--mid); }
+    .nc-primary-time { display: flex; align-items: flex-end; gap: 1px; line-height: 1; }
+    .nc-time-big  { font-size: 42px; font-weight: 700; line-height: 1; color: #fff; }
+    .nc-time-ampm { font-size: 17px; font-weight: 700; color: #fff; line-height: 1.3; }
+    .nc-secondary { text-align: right; padding-bottom: 5px; }
+    .nc-secondary-time { font-size: 24px; font-weight: 700; color: var(--mid); line-height: 1; }
+    /* Footer / fallback message */
+    .nc-footer, .nc-fallback-msg {
+      font-size: 9.5px; font-weight: 700; letter-spacing: 0.3px; color: var(--mid);
+      padding-top: 12px; border-top: 1px solid rgba(255,255,255,0.07); margin-top: 1px;
+    }
 
     /* ── Section label ───────────────────────────────────────── */
     .section-label {
@@ -1006,7 +1022,7 @@ svg.leaflet-image-layer.leaflet-interactive path {
     .home-tip-close { background: none; border: none; color: var(--mid); font-size: 16px; cursor: pointer; flex-shrink: 0; padding: 0 4px; }
     .home-tip.hidden { display: none; }
 
-    @media (min-width: 520px) { .depart-big { font-size: 58px; } }
+    @media (min-width: 520px) { .nc-time-big { font-size: 52px; } }
   </style>
 </head>
 <body>
@@ -1084,7 +1100,7 @@ svg.leaflet-image-layer.leaflet-interactive path {
 'use strict';
 
 // ── Build version — bump this string on every deploy ─────
-const BUILD = 'r35';
+const BUILD = 'r36';
 
 // ── Config ───────────────────────────────────────────────
 const API_KEY   = 'ff39cd9c-729e-40ac-b740-1cebec6226f9';
@@ -1575,45 +1591,78 @@ function renderSchedule() {
   const next = upcoming[0];
   const rest = upcoming.slice(1, 4);
   const lv = getLiveVessel(next.vessel);
-  const isUnderway = !!(lv && !lv.AtDock);
-  const liveEta = isUnderway ? parseWSDot(lv.Eta) : null;
-  const bigTime    = isUnderway ? (liveEta || next.arrive) : next.depart;
-  // When underway: find next return departure from arriving terminal
-  const returnDep  = isUnderway ? getReturnDeparture(bigTime) : null;
-  // Right-side block only shown when returnDep is absent
-  const smallTime  = isUnderway ? next.depart  : next.arrive;
-  const smallLabel = isUnderway ? 'DEPARTED'   : 'ARRIVES';
-  const cdTarget   = isUnderway ? (liveEta || next.arrive) : next.depart;
-  const { t: dt, ap: dap } = splitTime(bigTime);
-  const { t: depT, ap: depAp } = splitTime(next.depart);
-  const cd = countdownInfo(cdTarget);
-  const status = vesselStatus(lv);
+  const liveEta = (lv && !lv.AtDock) ? parseWSDot(lv.Eta) : null;
+
+  // ── Determine card state ───────────────────────────────
+  let cardState;
+  if (!lv) {
+    cardState = 'fallback';
+  } else if (lv.AtDock) {
+    cardState = 'at-dock';
+  } else if (liveEta && minsTo(liveEta) <= 5) {
+    cardState = 'arriving';
+  } else {
+    cardState = 'sailing';
+  }
+
+  const originLabel = direction === 'SEA-BI' ? 'SEA' : 'BI';
+  const destLabel   = direction === 'SEA-BI' ? 'BI'  : 'SEA';
+  const atDock = cardState === 'at-dock';
+  const arriveTime  = liveEta || next.arrive;
+  const bigTime     = atDock ? next.depart : arriveTime;
+  const smallTime   = atDock ? next.arrive : next.depart;
+  const bigLabel    = atDock ? `DEPARTS ${originLabel}` : `ARRIVES ${destLabel}`;
+  const smallLabel  = atDock ? `ARRIVES ${destLabel}`   : `DEPARTED ${originLabel}`;
+  const cdTarget    = atDock ? next.depart : arriveTime;
+  const returnDep   = (cardState !== 'fallback') ? getReturnDeparture(arriveTime) : null;
+  const footerText  = returnDep
+    ? `Next: Departs ${destLabel} · ${fmtTime(returnDep.depart)}`
+    : null;
+
+  const badgeCls = { 'at-dock': 'nc-badge-dock', 'sailing': 'nc-badge-sailing', 'arriving': 'nc-badge-arriving' }[cardState] || '';
+  const pillCls  = { 'at-dock': 'nc-pill-dock',  'sailing': 'nc-pill-sailing',  'arriving': 'nc-pill-arriving'  }[cardState] || '';
+  const badgeText= { 'at-dock': 'At Dock',        'sailing': 'Sailing',           'arriving': 'Arriving'          }[cardState] || '';
+  const cd = (cardState !== 'fallback') ? countdownInfo(cdTarget) : { text: '', cls: '' };
+  const { t: bigT, ap: bigAp } = (cardState !== 'fallback') ? splitTime(bigTime) : { t: '', ap: '' };
 
   // ── Featured card (renders into #schedFeatured) ────────
-  featWrap.innerHTML = `
-    <div class="next-card" id="nextCard">
-      <div class="next-header">
-        <div class="vessel-tag">
-          <span class="vessel-icon">⛴</span>
-          <span class="vessel-tag-name" style="color:${getVesselColor(next.vessel)}">${next.vessel || 'Vessel TBD'}</span>
-          ${status ? `<span class="sail-badge ${status.cls}">${status.text}</span>` : ''}
+  if (cardState === 'fallback') {
+    featWrap.innerHTML = `
+      <div class="next-card" id="nextCard" data-state="fallback">
+        <div class="nc-header">
+          <div class="nc-vessel">
+            <span class="nc-vessel-icon">⛴</span>
+            <span class="nc-vessel-name" style="color:${getVesselColor(next.vessel)}">${next.vessel || 'Vessel TBD'}</span>
+          </div>
         </div>
-        <div class="countdown-pill ${cd.cls}" id="cdPill">${cd.text}${isUnderway ? '<span class="cd-sublabel">to arrival</span>' : ''}</div>
-      </div>
-      <div class="next-eyebrow">${isUnderway ? 'Arrival Time' : 'Departs'}</div>
-      <div class="next-body">
-        <div class="next-depart">
-          <span class="depart-big">${dt}</span><span class="depart-ampm">${dap}</span>
-          ${isUnderway ? `<div style="font-size:11px;color:var(--mid);margin-top:4px">Dep ${depT}<small style="font-size:9px;margin-left:2px">${depAp}</small></div>` : ''}
+        <div class="nc-fallback-msg" id="ncFallbackMsg">No live vessel data · Schedule only</div>
+      </div>`;
+  } else {
+    featWrap.innerHTML = `
+      <div class="next-card" id="nextCard" data-state="${cardState}" style="--bar-w:0">
+        <div class="nc-header">
+          <div class="nc-vessel">
+            <span class="nc-vessel-icon">⛴</span>
+            <span class="nc-vessel-name" style="color:${getVesselColor(next.vessel)}">${next.vessel || 'Vessel TBD'}</span>
+            <span class="nc-badge ${badgeCls}">${badgeText}</span>
+          </div>
+          <div class="nc-pill ${pillCls}" id="cdPill">${cd.text}</div>
         </div>
-        ${!returnDep ? `
-        <div class="arrive-block">
-          <div class="arrive-label">${smallLabel}</div>
-          <div class="arrive-time">${fmtTime(smallTime)}</div>
-        </div>` : ''}
-      </div>
-      ${returnDep ? `<div class="return-dep-footer">Return dep · ${fmtTime(returnDep.depart)}</div>` : ''}
-    </div>`;
+        <div class="nc-times">
+          <div class="nc-primary">
+            <div class="nc-primary-label">${bigLabel}</div>
+            <div class="nc-primary-time">
+              <span class="nc-time-big">${bigT}</span><span class="nc-time-ampm">${bigAp}</span>
+            </div>
+          </div>
+          <div class="nc-secondary">
+            <div class="nc-secondary-label">${smallLabel}</div>
+            <div class="nc-secondary-time">${fmtTime(smallTime)}</div>
+          </div>
+        </div>
+        ${footerText ? `<div class="nc-footer">${footerText}</div>` : ''}
+      </div>`;
+  }
 
   // ── Upcoming + full schedule (renders into #schedContent) ─
   let html = '';
@@ -1671,8 +1720,8 @@ function renderSchedule() {
 
   const nextCardEl = document.getElementById('nextCard');
   function updateProgress() {
-    if (!nextCardEl || !lv || lv.AtDock) { nextCardEl?.style.setProperty('--bar-w', '0'); return; }
-    const left = parseWSDot(lv.LeftDock);
+    if (!nextCardEl || cardState === 'fallback' || cardState === 'at-dock') return;
+    const left = lv ? parseWSDot(lv.LeftDock) : null;
     const eta  = liveEta || next.arrive;
     if (!left || !eta) return;
     const prog = Math.max(0, Math.min(1, (Date.now() - left) / (eta - left)));
@@ -1684,10 +1733,8 @@ function renderSchedule() {
   cdTimer = setInterval(() => {
     const pill = document.getElementById('cdPill');
     if (!pill) { clearInterval(cdTimer); return; }
-    const { text, cls } = countdownInfo(cdTarget);
-    // Preserve the "to arrival" sublabel while updating the countdown text
-    pill.innerHTML = `${text}${isUnderway ? '<span class="cd-sublabel">to arrival</span>' : ''}`;
-    pill.className = `countdown-pill ${cls}`;
+    const { text } = countdownInfo(cdTarget);
+    pill.textContent = text;
     updateProgress();
   }, 10000);
 }
