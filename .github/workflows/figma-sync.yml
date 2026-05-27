@@ -1,0 +1,32 @@
+name: Figma Sync
+
+on:
+  workflow_dispatch:
+    inputs:
+      figma_urls:
+        description: "Comma-separated Figma node URLs (e.g. https://www.figma.com/design/ABC/File?node-id=1-2)"
+        required: true
+        type: string
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Fetch Figma node data and images
+        env:
+          FIGMA_API_KEY: ${{ secrets.FIGMA_API_KEY }}
+          FIGMA_URLS: ${{ inputs.figma_urls }}
+        run: python3 .github/scripts/figma_sync.py
+
+      - name: Commit specs to repo
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add figma-specs/
+          git diff --staged --quiet && echo "Nothing to commit" || \
+            git commit -m "chore: sync Figma specs [skip ci]" && git push
