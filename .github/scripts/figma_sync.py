@@ -143,7 +143,9 @@ def main():
         print(f"\nFile {file_key}: fetching {len(node_ids)} node(s)...")
 
         # --- Node JSON ---
-        data = figma_request(f"/files/{file_key}/nodes?ids={urllib.parse.quote(ids_api)}")
+        # safe=':,' preserves colons (node ID separator) and commas (multi-ID separator)
+        ids_encoded = urllib.parse.quote(ids_api, safe=":,")
+        data = figma_request(f"/files/{file_key}/nodes?ids={ids_encoded}")
         raw_path = out_dir / f"{file_key}-nodes.json"
         with open(raw_path, "w") as f:
             json.dump(data, f, indent=2)
@@ -165,7 +167,7 @@ def main():
         # --- Rendered PNGs ---
         print("  Fetching rendered images...")
         img_data = figma_request(
-            f"/images/{file_key}?ids={urllib.parse.quote(ids_api)}&format=png&scale=2"
+            f"/images/{file_key}?ids={ids_encoded}&format=png&scale=2"
         )
         for node_id, img_url in img_data.get("images", {}).items():
             if not img_url:
