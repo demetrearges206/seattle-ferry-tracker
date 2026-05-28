@@ -833,7 +833,7 @@ svg.leaflet-image-layer.leaflet-interactive path {
     /* Status badge */
     .nc-badge {
       font-size: 11px; font-weight: 700; line-height: 13px; padding: 4px 8px;
-      border-radius: 8px; white-space: nowrap; flex-shrink: 0;
+      border-radius: 20px; white-space: nowrap; flex-shrink: 0;
     }
     .nc-badge-dock     { background: rgba(33,150,243,0.12);  color: #2196f3; }
     .nc-badge-sailing  { background: rgba(0,201,167,0.12);   color: #00c9a7; }
@@ -855,13 +855,26 @@ svg.leaflet-image-layer.leaflet-interactive path {
       font-size: 9px; font-weight: 700; letter-spacing: 1.8px; line-height: 11px;
       text-transform: uppercase; margin-bottom: 6px;
     }
-    .nc-primary-label   { color: #fff; }
+    .nc-primary-label   { color: var(--mid); }
     .nc-secondary-label { color: var(--mid); }
     .nc-primary-time { display: flex; align-items: flex-end; gap: 1px; line-height: 1; }
     .nc-time-big  { font-size: 42px; font-weight: 700; line-height: 1; color: #fff; }
     .nc-time-ampm { font-size: 17px; font-weight: 700; color: #fff; line-height: 1.3; }
     .nc-secondary { text-align: right; padding-bottom: 5px; }
     .nc-secondary-time { font-size: 24px; font-weight: 700; color: var(--mid); line-height: 1; }
+    /* Sailing/arriving: big arrival time moves to RIGHT, small departed time moves to LEFT */
+    .next-card[data-state="sailing"] .nc-primary,
+    .next-card[data-state="arriving"] .nc-primary {
+      order: 2; text-align: right;
+    }
+    .next-card[data-state="sailing"] .nc-primary .nc-primary-time,
+    .next-card[data-state="arriving"] .nc-primary .nc-primary-time {
+      justify-content: flex-end;
+    }
+    .next-card[data-state="sailing"] .nc-secondary,
+    .next-card[data-state="arriving"] .nc-secondary {
+      order: 1; text-align: left;
+    }
     /* Footer / fallback message */
     .nc-footer, .nc-fallback-msg {
       font-size: 9.5px; font-weight: 700; letter-spacing: 0.3px; color: var(--mid);
@@ -1041,7 +1054,7 @@ svg.leaflet-image-layer.leaflet-interactive path {
     </div>
 
     <button id="vesselLabel" class="section-label" style="width:100%;background:none;border:none;cursor:pointer;display:flex;justify-content:space-between;align-items:center;-webkit-tap-highlight-color:transparent">
-      Live Vessels <span id="vesselChevron" style="font-size:10px;color:var(--mid);font-weight:400">▼</span>
+      Vessels <span id="vesselChevron" style="font-size:10px;color:var(--mid);font-weight:400">▼</span>
     </button>
     <div id="vesselStrip" style="display:none;margin-bottom:10px"></div>
 
@@ -1081,7 +1094,7 @@ svg.leaflet-image-layer.leaflet-interactive path {
 'use strict';
 
 // ── Build version — bump this string on every deploy ─────
-const BUILD = 'r39';
+const BUILD = 'r40';
 
 // ── Config ───────────────────────────────────────────────
 const API_KEY   = 'ff39cd9c-729e-40ac-b740-1cebec6226f9';
