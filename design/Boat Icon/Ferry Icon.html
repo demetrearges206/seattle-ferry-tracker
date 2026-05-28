@@ -1,0 +1,684 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Ferry Icon v2 — Dark map, neon hull</title>
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<style>
+  :root {
+    /* canvas chrome */
+    --bg: #f6f4ef;
+    --ink: #1b1d1f;
+    --muted: #7a7670;
+    --line: #e3ddd2;
+    --paper: #fbfaf6;
+
+    /* app palette — pulled from the screenshots */
+    --app-bg: #0b1a2e;
+    --app-surface: #122a47;
+    --app-water-deep: #0c1e36;
+    --app-land: #14305b;
+    --app-land-edge: #2e5c9c;
+    --app-route: #2dd4bf;
+    --app-label-ink: #2dd4bf;
+    --app-text-muted: #6c8bb4;
+
+    /* fleet colors — saturated, all readable on the dark navy */
+    --v-lime:    #b6e84a;
+    --v-teal:    #2dd4bf;
+    --v-cyan:    #5bceff;
+    --v-blue:    #6f9bff;
+    --v-magenta: #f06aa3;
+    --v-amber:   #f2b53d;
+    --v-coral:   #ff7a5c;
+    --v-violet:  #b388ff;
+  }
+  html, body { margin: 0; padding: 0; background: var(--bg); color: var(--ink); font-family: Helvetica, "Helvetica Neue", Arial, sans-serif; }
+
+  /* --- canvas chrome cards --- */
+  .artboard {
+    background: var(--paper);
+    padding: 30px;
+    box-sizing: border-box;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+  }
+  .artboard.dark {
+    background: var(--app-bg);
+    color: #cfdcef;
+  }
+  .ab-head { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; }
+  .ab-title { font-size: 13px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; }
+  .ab-sub { font-size: 11px; color: var(--muted); font-family: ui-monospace, "SF Mono", Menlo, monospace; }
+  .dark .ab-sub { color: var(--app-text-muted); }
+  .label { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; }
+  .dark .label { color: var(--app-text-muted); }
+
+  .row { display: flex; align-items: center; gap: 26px; flex-wrap: wrap; }
+  .row.tight { gap: 14px; }
+  .col { display: flex; flex-direction: column; gap: 8px; }
+
+  /* --- the icon system ---
+     Every ferry SVG uses fill="currentColor" on the hull, so the marker
+     color = CSS color on the wrapper. Glow uses drop-shadow with the same
+     color (currentColor) at low alpha. */
+  .ferry {
+    display: inline-block;
+    line-height: 0;
+    /* glow halo, tinted with the marker color */
+    filter:
+      drop-shadow(0 0 6px color-mix(in srgb, currentColor 55%, transparent))
+      drop-shadow(0 0 14px color-mix(in srgb, currentColor 28%, transparent));
+  }
+  .ferry.noglow { filter: none; }
+  .ferry svg { display: block; width: 100%; height: 100%; overflow: visible; }
+
+  /* --- map mock styling --- */
+  .map {
+    position: relative;
+    background: var(--app-water-deep);
+    border-radius: 14px;
+    overflow: hidden;
+    height: 460px;
+    width: 100%;
+    box-shadow: inset 0 0 0 1.5px var(--app-land-edge);
+  }
+  .map svg.basemap { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .pin {
+    position: absolute;
+    transform: translate(-50%,-50%) rotate(var(--r,0deg));
+  }
+  .terminal {
+    position: absolute;
+    transform: translate(-50%, -50%);
+    padding: 5px 10px;
+    border: 1.5px solid var(--app-route);
+    border-radius: 7px;
+    color: var(--app-label-ink);
+    font-family: ui-monospace, "SF Mono", Menlo, monospace;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    background: var(--app-bg);
+  }
+  .helper {
+    position: absolute;
+    right: 16px;
+    bottom: 14px;
+    color: #8aa3c4;
+    background: rgba(11,26,46,0.7);
+    border: 1px solid #1f3a62;
+    padding: 6px 12px;
+    border-radius: 8px;
+    font-family: Helvetica, sans-serif;
+    font-size: 12px;
+  }
+
+  /* --- inline color chips on dark --- */
+  .swatch {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 4px 10px 4px 6px; border-radius: 999px;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.06);
+    font-family: ui-monospace, monospace; font-size: 11px; color: #cfdcef;
+  }
+  .swatch i { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
+
+  /* --- variant detail card grid --- */
+  .variant-grid {
+    display: grid;
+    grid-template-columns: 240px 1fr;
+    gap: 28px;
+    align-items: stretch;
+  }
+  .hero {
+    background: var(--app-bg);
+    border-radius: 12px;
+    display: grid;
+    place-items: center;
+    box-shadow: inset 0 0 0 1px #1f3a62;
+    min-height: 240px;
+  }
+  .spec { display: flex; flex-direction: column; gap: 14px; }
+  .spec-row { display: flex; flex-direction: column; gap: 8px; }
+  .size-rail {
+    background: var(--app-bg);
+    border-radius: 10px;
+    padding: 16px 18px;
+    display: flex; align-items: flex-end; gap: 20px;
+    box-shadow: inset 0 0 0 1px #1f3a62;
+  }
+  .size-cell { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+  .size-cell .px { font-family: ui-monospace, monospace; font-size: 10px; color: var(--app-text-muted); }
+  .color-rail {
+    background: var(--app-bg);
+    border-radius: 10px;
+    padding: 14px 18px;
+    display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+    box-shadow: inset 0 0 0 1px #1f3a62;
+  }
+  .heading-rail {
+    background: var(--app-bg);
+    border-radius: 10px;
+    padding: 14px 18px;
+    display: flex; align-items: center; gap: 18px; flex-wrap: wrap;
+    box-shadow: inset 0 0 0 1px #1f3a62;
+  }
+  .heading-cell { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+  .heading-cell .deg { font-family: ui-monospace, monospace; font-size: 10px; color: var(--app-text-muted); }
+
+  /* --- recipe card --- */
+  pre.code {
+    background: #0b1a2e; color: #e7eef9; padding: 16px 18px; border-radius: 10px;
+    font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 11.5px; line-height: 1.6;
+    overflow: auto; margin: 0;
+    box-shadow: inset 0 0 0 1px #1f3a62;
+  }
+  .recipe-grid { display: grid; grid-template-columns: 120px 1fr; gap: 14px 22px; align-items: center; }
+  .recipe-grid .label { align-self: start; padding-top: 4px; }
+  .recipe-grid .v { font-size: 13px; color: var(--ink); }
+  .recipe-grid code { background: #eee9dc; padding: 1px 6px; border-radius: 4px; font-size: 11.5px; }
+
+  /* --- side-by-side compare strip (old triangle vs new ferry) --- */
+  .compare {
+    background: var(--app-bg);
+    border-radius: 12px;
+    padding: 26px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 28px;
+    box-shadow: inset 0 0 0 1px #1f3a62;
+  }
+  .compare .cell { display: flex; flex-direction: column; align-items: center; gap: 14px; }
+  .compare .cap { font-family: ui-monospace, monospace; font-size: 10px; color: var(--app-text-muted); text-transform: uppercase; letter-spacing: 0.08em; }
+
+</style>
+</head>
+<body>
+
+<!-- ============================================================
+     ICON DEFS — every variant is a <symbol> with viewBox 0 0 64 64.
+     Bow points UP (north). Rotate the marker to match heading.
+
+     Color: hull uses fill="currentColor". Set CSS `color` on the wrapper.
+     Glow:  applied as a CSS drop-shadow filter using currentColor.
+     The dark porthole / wheelhouse echoes the visual language of the
+     triangles already in the app.
+============================================================ -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+
+    <!-- 01. Pointer — direct upgrade of the existing triangle:
+         rounded arrowhead + dark porthole. Same silhouette family, but
+         now a recognizable top-down vessel shape with a clear bow. -->
+    <symbol id="ferry-pointer" viewBox="0 0 64 64">
+      <path fill="currentColor" d="
+        M32 6
+        C 36 6, 38 9, 41 16
+        L 52 44
+        C 54 49, 51 54, 46 53
+        L 18 53
+        C 13 54, 10 49, 12 44
+        L 23 16
+        C 26 9, 28 6, 32 6 Z" />
+      <!-- porthole / pilot eye, biased toward the bow -->
+      <circle cx="32" cy="24" r="4.2" fill="#0b1a2e" />
+    </symbol>
+
+    <!-- 02. Hull — top-down ferry silhouette, single fill.
+         Pointed bow, parallel sides, squared stern. Reads as a ship at 24px+. -->
+    <symbol id="ferry-hull" viewBox="0 0 64 64">
+      <path fill="currentColor" d="
+        M32 5
+        C 40 13, 44 21, 44 29
+        L 44 54
+        C 44 57, 42 59, 39 59
+        L 25 59
+        C 22 59, 20 57, 20 54
+        L 20 29
+        C 20 21, 24 13, 32 5 Z" />
+      <circle cx="32" cy="22" r="3.6" fill="#0b1a2e" />
+    </symbol>
+
+    <!-- 03. Deck — hull + dark inset deck plate + wheelhouse mark.
+         Recommended default. Reads as a real top-down ferry at every size. -->
+    <symbol id="ferry-deck" viewBox="0 0 64 64">
+      <path fill="currentColor" d="
+        M32 5
+        C 40 13, 44 21, 44 29
+        L 44 54
+        C 44 57, 42 59, 39 59
+        L 25 59
+        C 22 59, 20 57, 20 54
+        L 20 29
+        C 20 21, 24 13, 32 5 Z" />
+      <!-- inset deck channel: same shape, smaller, dark to read on bright hull -->
+      <path fill="#0b1a2e" fill-opacity="0.32" d="
+        M32 13
+        C 37.5 19, 40 25, 40 30
+        L 40 51
+        C 40 53, 38.5 54.5, 36.5 54.5
+        L 27.5 54.5
+        C 25.5 54.5, 24 53, 24 51
+        L 24 30
+        C 24 25, 26.5 19, 32 13 Z" />
+      <!-- wheelhouse / bridge: dark circle forward, matching the existing porthole language -->
+      <circle cx="32" cy="24" r="3.4" fill="#0b1a2e" />
+    </symbol>
+
+    <!-- 04. Detailed — adds funnel + lifeboat marks. For 56px and up. -->
+    <symbol id="ferry-detailed" viewBox="0 0 64 64">
+      <path fill="currentColor" d="
+        M32 5
+        C 40 13, 44 21, 44 29
+        L 44 54
+        C 44 57, 42 59, 39 59
+        L 25 59
+        C 22 59, 20 57, 20 54
+        L 20 29
+        C 20 21, 24 13, 32 5 Z" />
+      <path fill="#0b1a2e" fill-opacity="0.32" d="
+        M32 13
+        C 37.5 19, 40 25, 40 30
+        L 40 51
+        C 40 53, 38.5 54.5, 36.5 54.5
+        L 27.5 54.5
+        C 25.5 54.5, 24 53, 24 51
+        L 24 30
+        C 24 25, 26.5 19, 32 13 Z" />
+      <!-- bridge -->
+      <circle cx="32" cy="23" r="3.2" fill="#0b1a2e" />
+      <!-- funnel/vent -->
+      <circle cx="32" cy="35" r="2" fill="#0b1a2e" />
+      <!-- lifeboats / davits, one each side -->
+      <rect fill="#0b1a2e" x="21.2" y="40" width="2.6" height="6.5" rx="1.2" />
+      <rect fill="#0b1a2e" x="40.2" y="40" width="2.6" height="6.5" rx="1.2" />
+      <!-- stern rail -->
+      <rect fill="#0b1a2e" x="25" y="51.5" width="14" height="1.6" rx="0.8" />
+    </symbol>
+
+    <!-- 05. Bidirectional — symmetric double-ended ferry (matches WSF boats:
+         Wenatchee/Tacoma are double-enders). No tapered bow, just two
+         rounded ends. Useful when heading data is unreliable. -->
+    <symbol id="ferry-bidirectional" viewBox="0 0 64 64">
+      <path fill="currentColor" d="
+        M32 5
+        C 39 5, 44 11, 44 19
+        L 44 45
+        C 44 53, 39 59, 32 59
+        C 25 59, 20 53, 20 45
+        L 20 19
+        C 20 11, 25 5, 32 5 Z" />
+      <!-- dark band amidships indicates two-ended vessel -->
+      <rect fill="#0b1a2e" fill-opacity="0.45" x="20" y="30" width="24" height="4" />
+      <circle cx="32" cy="21" r="3" fill="#0b1a2e" />
+      <circle cx="32" cy="43" r="3" fill="#0b1a2e" />
+    </symbol>
+
+  </defs>
+</svg>
+
+<div id="root"></div>
+
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script type="text/babel" src="design-canvas.jsx"></script>
+
+<script type="text/babel">
+  const { DesignCanvas, DCSection, DCArtboard } = window;
+
+  // Reusable ferry component — variant, size (px), color, heading (deg)
+  function Ferry({ variant = 'deck', size = 36, color = '#2dd4bf', heading = 0, glow = true, className = '' }) {
+    return (
+      <span
+        className={`ferry ${glow ? '' : 'noglow'} ${className}`}
+        style={{
+          width: size,
+          height: size,
+          color,
+          transform: `rotate(${heading}deg)`,
+          transformOrigin: '50% 50%',
+          display: 'inline-block',
+        }}
+        aria-label="ferry"
+      >
+        <svg viewBox="0 0 64 64"><use href={`#ferry-${variant}`} /></svg>
+      </span>
+    );
+  }
+
+  // Fleet color palette tuned for the dark navy basemap
+  const FLEET = [
+    { name: 'Lime',    css: 'var(--v-lime)',    hex: '#b6e84a' },
+    { name: 'Teal',    css: 'var(--v-teal)',    hex: '#2dd4bf' },
+    { name: 'Cyan',    css: 'var(--v-cyan)',    hex: '#5bceff' },
+    { name: 'Blue',    css: 'var(--v-blue)',    hex: '#6f9bff' },
+    { name: 'Violet',  css: 'var(--v-violet)',  hex: '#b388ff' },
+    { name: 'Magenta', css: 'var(--v-magenta)', hex: '#f06aa3' },
+    { name: 'Coral',   css: 'var(--v-coral)',   hex: '#ff7a5c' },
+    { name: 'Amber',   css: 'var(--v-amber)',   hex: '#f2b53d' },
+  ];
+
+  // -------------------------------------------------------------------
+  // Hero — drop the new icon into a reproduction of the user's vessel map.
+  // -------------------------------------------------------------------
+  function VesselsMap() {
+    // two ferries on the SEA <-> BI route, mid-crossing
+    const sea = { x: 88, y: 56 };
+    const bi  = { x: 16, y: 44 };
+    // ferry A heading toward BI (left + slightly up): bearing ~-100° from north
+    // ferry B heading toward SEA (right + slightly down): bearing ~80° from north
+    return (
+      <div className="artboard dark">
+        <div className="ab-head">
+          <div className="ab-title" style={{ color: '#cfdcef' }}>Vessels — in context</div>
+          <div className="ab-sub">36px markers · drop-shadow glow · rotated to heading</div>
+        </div>
+
+        <div className="map">
+          {/* hand-drawn basemap that echoes the screenshot — land shapes + route */}
+          <svg className="basemap" viewBox="0 0 900 460" preserveAspectRatio="none">
+            <defs>
+              <linearGradient id="land-fill" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0" stopColor="#16386a" />
+                <stop offset="1" stopColor="#11284e" />
+              </linearGradient>
+            </defs>
+
+            {/* west landmass — Bainbridge / Kitsap side */}
+            <path
+              d="M -20 -10 L 220 -10 L 250 80 L 230 160 L 170 200 L 200 260
+                 L 160 300 L 110 340 L 130 400 L 80 470 L -20 480 Z"
+              fill="url(#land-fill)" stroke="var(--app-land-edge)" strokeWidth="2" />
+            {/* island chunk lower-west */}
+            <path
+              d="M -20 380 L 100 410 L 90 470 L -20 480 Z"
+              fill="url(#land-fill)" stroke="var(--app-land-edge)" strokeWidth="2" />
+
+            {/* east landmass — Seattle side */}
+            <path
+              d="M 920 -10 L 700 -10 L 660 90 L 690 180 L 720 240 L 690 320
+                 L 730 400 L 760 470 L 920 480 Z"
+              fill="url(#land-fill)" stroke="var(--app-land-edge)" strokeWidth="2" />
+
+            {/* route line (dashed teal) */}
+            <line x1="155" y1="205" x2="780" y2="255"
+                  stroke="var(--app-route)" strokeWidth="2.5" strokeDasharray="9 9" strokeLinecap="round" />
+          </svg>
+
+          {/* Terminal labels */}
+          <div className="terminal" style={{ left: '17%', top: '44%' }}>BI</div>
+          <div className="terminal" style={{ left: '87%', top: '55%' }}>SEA</div>
+
+          {/* Vessel A — Wenatchee, heading West toward BI */}
+          <div className="pin" style={{ left: '54%', top: '47%', ['--r']: '-95deg' }}>
+            <Ferry variant="deck" size={42} color="var(--v-lime)" />
+          </div>
+          {/* Vessel B — Tacoma, heading East toward SEA */}
+          <div className="pin" style={{ left: '38%', top: '50%', ['--r']: '85deg' }}>
+            <Ferry variant="deck" size={42} color="var(--v-teal)" />
+          </div>
+
+          <div className="helper">Tap vessel for details</div>
+        </div>
+
+        <div className="row">
+          <span className="swatch"><i style={{ background: '#b6e84a' }}></i> Wenatchee</span>
+          <span className="swatch"><i style={{ background: '#2dd4bf' }}></i> Tacoma</span>
+          <span className="ab-sub" style={{ marginLeft: 'auto' }}>
+            Hull = currentColor · glow = drop-shadow(currentColor) · rotation = heading
+          </span>
+        </div>
+      </div>
+    );
+  }
+
+  // -------------------------------------------------------------------
+  // Side-by-side: old triangle vs new icon (same map color, same glow)
+  // -------------------------------------------------------------------
+  function CompareCard() {
+    return (
+      <div className="artboard dark">
+        <div className="ab-head">
+          <div className="ab-title" style={{ color: '#cfdcef' }}>Before / after — vessel mark</div>
+          <div className="ab-sub">drop-in replacement at the same footprint</div>
+        </div>
+        <div className="compare">
+          <div className="cell">
+            <span className="ferry" style={{ width: 56, height: 56, color: 'var(--v-lime)' }}>
+              {/* legacy triangle reconstructed for fair comparison */}
+              <svg viewBox="0 0 64 64">
+                <path fill="currentColor" d="M32 8 L 56 52 L 8 52 Z" />
+                <circle cx="32" cy="36" r="4" fill="#0b1a2e" />
+              </svg>
+            </span>
+            <span className="cap">Today — triangle</span>
+          </div>
+          <div className="cell">
+            <Ferry variant="deck" size={56} color="var(--v-lime)" />
+            <span className="cap">New — top-down ferry</span>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // -------------------------------------------------------------------
+  // Variant detail card
+  // -------------------------------------------------------------------
+  function VariantCard({ variant, title, when, recommended }) {
+    return (
+      <div className="artboard dark">
+        <div className="ab-head">
+          <div className="ab-title" style={{ color: '#cfdcef' }}>
+            {title} {recommended && <span style={{ color: 'var(--v-lime)', marginLeft: 8, fontSize: 11 }}>★ default</span>}
+          </div>
+          <div className="ab-sub">id: ferry-{variant}</div>
+        </div>
+
+        <div className="variant-grid">
+          <div className="hero">
+            <Ferry variant={variant} size={160} color="var(--v-teal)" />
+          </div>
+
+          <div className="spec">
+            <div className="spec-row">
+              <div className="label">Sizes</div>
+              <div className="size-rail">
+                {[16, 24, 32, 44, 64, 96].map(s => (
+                  <div className="size-cell" key={s}>
+                    <Ferry variant={variant} size={s} color="var(--v-teal)" />
+                    <span className="px">{s}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="spec-row">
+              <div className="label">Fleet colors @ 36px</div>
+              <div className="color-rail">
+                {FLEET.map(c => (
+                  <Ferry key={c.hex} variant={variant} size={36} color={c.css} />
+                ))}
+              </div>
+            </div>
+
+            <div className="spec-row">
+              <div className="label">Heading</div>
+              <div className="heading-rail">
+                {[0, 45, 90, 135, 180, 225, 270, 315].map(h => (
+                  <div className="heading-cell" key={h}>
+                    <Ferry variant={variant} size={36} color="var(--v-cyan)" heading={h} />
+                    <span className="deg">{h}°</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="ab-sub">{when}</div>
+      </div>
+    );
+  }
+
+  // -------------------------------------------------------------------
+  // Usage card
+  // -------------------------------------------------------------------
+  function Recipe() {
+    return (
+      <div className="artboard">
+        <div className="ab-head">
+          <div className="ab-title">Usage</div>
+          <div className="ab-sub">single SVG · currentColor · CSS transform · drop-shadow glow</div>
+        </div>
+
+        <div className="recipe-grid">
+          <div className="label">Color</div>
+          <div className="v">
+            Hull is <code>fill="currentColor"</code>. Set <code>color</code> on the wrapper — that's the only thing you change per-vessel.
+          </div>
+          <div className="label">Heading</div>
+          <div className="v">
+            Apply <code>transform: rotate(headingDeg)</code> to the wrapper. Bow points up at 0° (north).
+          </div>
+          <div className="label">Glow</div>
+          <div className="v">
+            The halo is a CSS <code>drop-shadow</code> that picks up <code>currentColor</code>, so each vessel glows in its own color. Disable with the <code>.noglow</code> class.
+          </div>
+          <div className="label">Size</div>
+          <div className="v">
+            Set width/height on the wrapper. <code>viewBox 0 0 64 64</code> scales cleanly down to 16px. Recommended hit target is 44×44 even when the visual is smaller.
+          </div>
+        </div>
+
+        <pre className="code">{`/* CSS */
+.ferry {
+  display: inline-block;
+  filter:
+    drop-shadow(0 0 6px color-mix(in srgb, currentColor 55%, transparent))
+    drop-shadow(0 0 14px color-mix(in srgb, currentColor 28%, transparent));
+}
+
+/* Markup — one vessel, one color, one heading */
+<span class="ferry"
+      style="width:36px; height:36px;
+             color:#b6e84a;            /* hull + glow color */
+             transform:rotate(127deg)"> /* heading from north */
+  <svg viewBox="0 0 64 64"><use href="#ferry-deck"/></svg>
+</span>`}</pre>
+
+        <div className="ab-sub">
+          The five variants share the same hull path family, so you can swap variants without changing the marker's footprint. Copy the <code>&lt;symbol&gt;</code> blocks from the top of this file into your app's SVG defs (or inline a single path).
+        </div>
+      </div>
+    );
+  }
+
+  // -------------------------------------------------------------------
+  // Palette card — show the fleet swatches against the real basemap color
+  // -------------------------------------------------------------------
+  function PaletteCard() {
+    return (
+      <div className="artboard dark">
+        <div className="ab-head">
+          <div className="ab-title" style={{ color: '#cfdcef' }}>Fleet palette on app navy</div>
+          <div className="ab-sub">all eight clear AAA contrast against #0b1a2e</div>
+        </div>
+        <div style={{
+          background: 'var(--app-bg)',
+          borderRadius: 12,
+          padding: 24,
+          display: 'grid',
+          gridTemplateColumns: 'repeat(4, 1fr)',
+          gap: 18,
+          boxShadow: 'inset 0 0 0 1px #1f3a62',
+        }}>
+          {FLEET.map(c => (
+            <div key={c.hex} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}>
+              <Ferry variant="deck" size={56} color={c.css} />
+              <div style={{ fontFamily: 'ui-monospace, monospace', fontSize: 11, color: '#cfdcef' }}>{c.name}</div>
+              <div style={{ fontFamily: 'ui-monospace, monospace', fontSize: 10, color: 'var(--app-text-muted)' }}>{c.hex}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  // -------------------------------------------------------------------
+  // App
+  // -------------------------------------------------------------------
+  function App() {
+    return (
+      <DesignCanvas title="Ferry icon · v2" subtitle="Top-down vessel marker for the WSF tracker · dark navy basemap · neon hull with currentColor + glow">
+        <DCSection id="hero" title="In context">
+          <DCArtboard id="map" label="Vessels map · drop-in replacement" width={1000} height={620}>
+            <VesselsMap />
+          </DCArtboard>
+          <DCArtboard id="compare" label="Before / after" width={680} height={420}>
+            <CompareCard />
+          </DCArtboard>
+        </DCSection>
+
+        <DCSection id="variants" title="Variants">
+          <DCArtboard id="v-deck" label="03 · Deck — recommended default" width={1100} height={520}>
+            <VariantCard
+              variant="deck"
+              title="Deck"
+              recommended
+              when="Hull + dark inset deck + wheelhouse mark. Reads as a top-down ferry at every size from 24px up. Use this for the live vessel pins on the route map."
+            />
+          </DCArtboard>
+          <DCArtboard id="v-pointer" label="01 · Pointer — direct triangle upgrade" width={1100} height={520}>
+            <VariantCard
+              variant="pointer"
+              title="Pointer"
+              when="Rounded arrowhead with the same porthole detail your existing triangles already use. The closest drop-in to the current marker — use it if you want the smallest visual change."
+            />
+          </DCArtboard>
+          <DCArtboard id="v-hull" label="02 · Hull — minimal silhouette" width={1100} height={520}>
+            <VariantCard
+              variant="hull"
+              title="Hull"
+              when="Hull-only silhouette, single fill. Cheapest to render, no inset details to muddy at small sizes. Good for dense scenes with many vessels."
+            />
+          </DCArtboard>
+          <DCArtboard id="v-detailed" label="04 · Detailed — for 56px and up" width={1100} height={520}>
+            <VariantCard
+              variant="detailed"
+              title="Detailed"
+              when="Adds funnel, lifeboat marks, and stern rail. Use on the vessel detail screen or when a single ferry is shown large — at small sizes the details turn to noise."
+            />
+          </DCArtboard>
+          <DCArtboard id="v-bidi" label="05 · Bidirectional — double-ended ferry" width={1100} height={520}>
+            <VariantCard
+              variant="bidirectional"
+              title="Bidirectional"
+              when="Double-ended ferry — symmetric, no bow taper. Use this if you want to be technically honest about WSF boats (Wenatchee, Tacoma, etc. don't turn around) or when heading data is unreliable."
+            />
+          </DCArtboard>
+        </DCSection>
+
+        <DCSection id="palette" title="Palette">
+          <DCArtboard id="palette-card" label="Fleet colors against basemap" width={900} height={460}>
+            <PaletteCard />
+          </DCArtboard>
+        </DCSection>
+
+        <DCSection id="usage" title="Usage">
+          <DCArtboard id="recipe" label="How to color, rotate, glow" width={900} height={540}>
+            <Recipe />
+          </DCArtboard>
+        </DCSection>
+      </DesignCanvas>
+    );
+  }
+
+  ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>

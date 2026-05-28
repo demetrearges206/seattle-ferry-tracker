@@ -1,0 +1,10 @@
+<?xml version="1.0"?>
+
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-label="ferry">
+  
+  <path fill="currentColor" d="M32 5 C 40 13, 44 21, 44 29 L 44 54 C 44 57, 42 59, 39 59 L 25 59 C 22 59, 20 57, 20 54 L 20 29 C 20 21, 24 13, 32 5 Z"></path>
+  
+  <path fill="#0b1a2e" fill-opacity="0.32" d="M32 13 C 37.5 19, 40 25, 40 30 L 40 51 C 40 53, 38.5 54.5, 36.5 54.5 L 27.5 54.5 C 25.5 54.5, 24 53, 24 51 L 24 30 C 24 25, 26.5 19, 32 13 Z"></path>
+  
+  <circle cx="32" cy="24" r="3.4" fill="#0b1a2e"></circle>
+</svg>

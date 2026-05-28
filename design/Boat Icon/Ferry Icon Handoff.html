@@ -1,0 +1,266 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Ferry Deck — Production handoff</title>
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<style>
+  :root {
+    --bg: #0b1a2e;
+    --surface: #122a47;
+    --edge: #1f3a62;
+    --ink: #e7eef9;
+    --muted: #8aa3c4;
+    --teal: #2dd4bf;
+    --lime: #b6e84a;
+    --cyan: #5bceff;
+    --blue: #6f9bff;
+    --violet: #b388ff;
+    --magenta: #f06aa3;
+    --coral: #ff7a5c;
+    --amber: #f2b53d;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--bg); color: var(--ink); font-family: Helvetica, "Helvetica Neue", Arial, sans-serif; }
+  body { padding: 56px 8vw 96px; }
+  h1 { font-size: 32px; font-weight: 700; margin: 0 0 6px; letter-spacing: -0.01em; }
+  h2 { font-size: 11px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); margin: 56px 0 18px; }
+  p { color: #cfdcef; line-height: 1.6; max-width: 60ch; margin: 0 0 12px; }
+  .sub { color: var(--muted); font-family: ui-monospace, Menlo, monospace; font-size: 13px; margin-bottom: 36px; }
+
+  .card {
+    background: linear-gradient(180deg, #122a47, #0e2240);
+    border: 1px solid var(--edge);
+    border-radius: 14px;
+    padding: 28px;
+  }
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+  .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
+
+  .label { font-family: ui-monospace, Menlo, monospace; font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 14px; }
+
+  /* the icon system */
+  .ferry {
+    display: inline-block;
+    line-height: 0;
+    color: var(--teal);
+    filter:
+      drop-shadow(0 0 6px color-mix(in srgb, currentColor 55%, transparent))
+      drop-shadow(0 0 14px color-mix(in srgb, currentColor 28%, transparent));
+  }
+  .ferry svg { display: block; width: 100%; height: 100%; overflow: visible; }
+
+  .hero {
+    background: #0b1a2e;
+    border-radius: 12px;
+    padding: 56px;
+    display: grid;
+    place-items: center;
+    box-shadow: inset 0 0 0 1px var(--edge);
+  }
+  .size-row { display: flex; align-items: flex-end; gap: 28px; flex-wrap: wrap; }
+  .size-cell { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+  .size-cell .px { font-family: ui-monospace, monospace; font-size: 10px; color: var(--muted); }
+
+  .color-row { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; }
+  .color-cell { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+  .color-cell .name { font-family: ui-monospace, monospace; font-size: 10px; color: var(--muted); }
+
+  .heading-row { display: flex; gap: 22px; flex-wrap: wrap; }
+  .heading-cell { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+  .heading-cell .deg { font-family: ui-monospace, monospace; font-size: 10px; color: var(--muted); }
+
+  pre.code {
+    background: #06111f; color: #e7eef9; padding: 18px 20px; border-radius: 10px;
+    font-family: ui-monospace, Menlo, monospace; font-size: 12.5px; line-height: 1.65;
+    overflow: auto; margin: 0;
+    border: 1px solid var(--edge);
+  }
+  .tk { color: #6f9bff; }
+  .at { color: #2dd4bf; }
+  .st { color: #f2b53d; }
+  .cm { color: #6c8bb4; }
+
+  .map {
+    position: relative;
+    background: var(--bg);
+    border-radius: 12px;
+    overflow: hidden;
+    height: 360px;
+    box-shadow: inset 0 0 0 1px var(--edge);
+  }
+  .map svg.basemap { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .pin { position: absolute; transform: translate(-50%,-50%) rotate(var(--r,0deg)); }
+  .terminal {
+    position: absolute;
+    transform: translate(-50%, -50%);
+    padding: 5px 10px;
+    border: 1.5px solid var(--teal);
+    border-radius: 7px;
+    color: var(--teal);
+    font-family: ui-monospace, Menlo, monospace;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    background: var(--bg);
+  }
+
+  .download {
+    display: inline-flex; align-items: center; gap: 10px;
+    padding: 10px 16px; border-radius: 8px;
+    background: var(--teal); color: #0b1a2e;
+    font-family: ui-monospace, Menlo, monospace; font-size: 13px; font-weight: 700;
+    text-decoration: none; letter-spacing: 0.02em;
+  }
+  .download:hover { background: #5ee8d6; }
+
+  .specs { display: grid; grid-template-columns: 140px 1fr; gap: 12px 22px; }
+  .specs dt { font-family: ui-monospace, Menlo, monospace; font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; padding-top: 3px; }
+  .specs dd { margin: 0; color: #cfdcef; font-size: 14px; }
+  .specs dd code { background: #06111f; padding: 1px 8px; border-radius: 4px; font-size: 12px; color: var(--teal); }
+</style>
+</head>
+<body>
+
+<!-- Ferry icon is injected as inline SVG into every .ferry span at load time.
+     We avoid <use href="#symbol"> because currentColor doesn't reliably inherit
+     across the shadow boundary in all browsers — inlining the 3 shapes is cheap
+     and guarantees the hull picks up the host span's CSS color. -->
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    const SVG = `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+      <path fill="currentColor" d="M32 5 C 40 13, 44 21, 44 29 L 44 54 C 44 57, 42 59, 39 59 L 25 59 C 22 59, 20 57, 20 54 L 20 29 C 20 21, 24 13, 32 5 Z"/>
+      <path fill="#0b1a2e" fill-opacity="0.32" d="M32 13 C 37.5 19, 40 25, 40 30 L 40 51 C 40 53, 38.5 54.5, 36.5 54.5 L 27.5 54.5 C 25.5 54.5, 24 53, 24 51 L 24 30 C 24 25, 26.5 19, 32 13 Z"/>
+      <circle cx="32" cy="24" r="3.4" fill="#0b1a2e"/>
+    </svg>`;
+    document.querySelectorAll('.ferry').forEach(el => { el.innerHTML = SVG; });
+  });
+</script>
+
+<h1>Ferry — vessel map marker</h1>
+<p class="sub">Production handoff · top-down · currentColor + drop-shadow glow</p>
+
+<div class="card">
+  <div class="hero">
+    <span class="ferry" style="width:200px; height:200px; color: var(--lime);"></span>
+  </div>
+  <div style="display:flex; gap: 14px; margin-top: 22px; align-items:center; flex-wrap:wrap;">
+    <a class="download" href="ferry-deck.svg" download>↓ ferry-deck.svg</a>
+    <span style="color: var(--muted); font-family: ui-monospace, monospace; font-size: 12px;">
+      328 bytes · viewBox 0 0 64 64 · single fill + 2 detail shapes
+    </span>
+  </div>
+</div>
+
+<h2>Specs</h2>
+<div class="card">
+  <dl class="specs">
+    <dt>Format</dt>          <dd>SVG, <code>viewBox 0 0 64 64</code>. Scales cleanly from 16px to 200px+.</dd>
+    <dt>Hull color</dt>      <dd>Driven by CSS <code>color</code> on the host element via <code>fill="currentColor"</code>.</dd>
+    <dt>Detail color</dt>    <dd>Hard-coded <code>#0b1a2e</code> (basemap navy) at 32% / 100% opacity for inset deck + wheelhouse.</dd>
+    <dt>Bow direction</dt>   <dd>Points up at 0°. Rotate the host element by the vessel's true heading (degrees from north, clockwise).</dd>
+    <dt>Glow</dt>            <dd>CSS <code>drop-shadow</code> filter that picks up <code>currentColor</code> — each vessel glows in its own hull color.</dd>
+    <dt>Hit target</dt>      <dd>Recommend a 44×44 transparent tap area centered on the icon, even when the visual is smaller.</dd>
+    <dt>Anchor point</dt>    <dd>Geographic position should be placed at the icon's <strong>center</strong> (32, 32 in viewBox units), not the bow tip.</dd>
+  </dl>
+</div>
+
+<h2>Sizes — what the user sees at zoom</h2>
+<div class="card">
+  <div class="size-row">
+    <div class="size-cell"><span class="ferry" style="width:16px;height:16px"></span><span class="px">16</span></div>
+    <div class="size-cell"><span class="ferry" style="width:20px;height:20px"></span><span class="px">20</span></div>
+    <div class="size-cell"><span class="ferry" style="width:24px;height:24px"></span><span class="px">24</span></div>
+    <div class="size-cell"><span class="ferry" style="width:32px;height:32px"></span><span class="px">32</span></div>
+    <div class="size-cell"><span class="ferry" style="width:40px;height:40px"></span><span class="px">40</span></div>
+    <div class="size-cell"><span class="ferry" style="width:56px;height:56px"></span><span class="px">56</span></div>
+    <div class="size-cell"><span class="ferry" style="width:80px;height:80px"></span><span class="px">80</span></div>
+  </div>
+</div>
+
+<h2>Fleet palette — verified against basemap #0B1A2E</h2>
+<div class="card">
+  <div class="color-row">
+    <div class="color-cell"><span class="ferry" style="width:48px;height:48px;color:var(--lime)"></span><span class="name">#B6E84A</span></div>
+    <div class="color-cell"><span class="ferry" style="width:48px;height:48px;color:var(--teal)"></span><span class="name">#2DD4BF</span></div>
+    <div class="color-cell"><span class="ferry" style="width:48px;height:48px;color:var(--cyan)"></span><span class="name">#5BCEFF</span></div>
+    <div class="color-cell"><span class="ferry" style="width:48px;height:48px;color:var(--blue)"></span><span class="name">#6F9BFF</span></div>
+    <div class="color-cell"><span class="ferry" style="width:48px;height:48px;color:var(--violet)"></span><span class="name">#B388FF</span></div>
+    <div class="color-cell"><span class="ferry" style="width:48px;height:48px;color:var(--magenta)"></span><span class="name">#F06AA3</span></div>
+    <div class="color-cell"><span class="ferry" style="width:48px;height:48px;color:var(--coral)"></span><span class="name">#FF7A5C</span></div>
+    <div class="color-cell"><span class="ferry" style="width:48px;height:48px;color:var(--amber)"></span><span class="name">#F2B53D</span></div>
+  </div>
+</div>
+
+<h2>Heading — rotate by true bearing</h2>
+<div class="card">
+  <div class="heading-row">
+    <div class="heading-cell"><span class="ferry" style="width:40px;height:40px;color:var(--cyan);transform:rotate(0deg)"></span><span class="deg">0°</span></div>
+    <div class="heading-cell"><span class="ferry" style="width:40px;height:40px;color:var(--cyan);transform:rotate(45deg)"></span><span class="deg">45°</span></div>
+    <div class="heading-cell"><span class="ferry" style="width:40px;height:40px;color:var(--cyan);transform:rotate(90deg)"></span><span class="deg">90°</span></div>
+    <div class="heading-cell"><span class="ferry" style="width:40px;height:40px;color:var(--cyan);transform:rotate(135deg)"></span><span class="deg">135°</span></div>
+    <div class="heading-cell"><span class="ferry" style="width:40px;height:40px;color:var(--cyan);transform:rotate(180deg)"></span><span class="deg">180°</span></div>
+    <div class="heading-cell"><span class="ferry" style="width:40px;height:40px;color:var(--cyan);transform:rotate(225deg)"></span><span class="deg">225°</span></div>
+    <div class="heading-cell"><span class="ferry" style="width:40px;height:40px;color:var(--cyan);transform:rotate(270deg)"></span><span class="deg">270°</span></div>
+    <div class="heading-cell"><span class="ferry" style="width:40px;height:40px;color:var(--cyan);transform:rotate(315deg)"></span><span class="deg">315°</span></div>
+  </div>
+</div>
+
+<h2>In context — two vessels, mid-crossing</h2>
+<div class="card">
+  <div class="map">
+    <svg class="basemap" viewBox="0 0 900 360" preserveAspectRatio="none">
+      <defs>
+        <linearGradient id="land-fill" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="#16386a" />
+          <stop offset="1" stop-color="#11284e" />
+        </linearGradient>
+      </defs>
+      <path d="M -20 -10 L 220 -10 L 250 80 L 200 200 L 130 280 L 90 360 L -20 360 Z" fill="url(#land-fill)" stroke="#2e5c9c" stroke-width="2" />
+      <path d="M 920 -10 L 700 -10 L 660 90 L 700 200 L 730 320 L 760 360 L 920 360 Z" fill="url(#land-fill)" stroke="#2e5c9c" stroke-width="2" />
+      <line x1="190" y1="160" x2="760" y2="200" stroke="#2dd4bf" stroke-width="2.5" stroke-dasharray="9 9" stroke-linecap="round" />
+    </svg>
+    <div class="terminal" style="left: 17%; top: 44%;">BI</div>
+    <div class="terminal" style="left: 87%; top: 55%;">SEA</div>
+    <div class="pin" style="left: 54%; top: 47%; --r: -95deg;">
+      <span class="ferry" style="width:44px;height:44px;color:var(--lime)"></span>
+    </div>
+    <div class="pin" style="left: 38%; top: 50%; --r: 85deg;">
+      <span class="ferry" style="width:44px;height:44px;color:var(--teal)"></span>
+    </div>
+  </div>
+</div>
+
+<h2>Integration</h2>
+<div class="card">
+  <p>Drop the SVG into your assets and render with whatever your map layer exposes — Mapbox <code>Marker</code>, MapLibre <code>HTMLMarkerElement</code>, React Native <code>Marker</code>, etc. The icon does three jobs through CSS only:</p>
+  <pre class="code"><span class="cm">/* once, in your global stylesheet */</span>
+<span class="at">.vessel-marker</span> {
+  <span class="tk">display</span>: inline-block;
+  <span class="tk">width</span>: 36px; <span class="tk">height</span>: 36px;
+  <span class="tk">transform-origin</span>: 50% 50%;
+  <span class="tk">filter</span>:
+    drop-shadow(0 0 6px color-mix(in srgb, currentColor 55%, transparent))
+    drop-shadow(0 0 14px color-mix(in srgb, currentColor 28%, transparent));
+}
+
+<span class="cm">/* per vessel — only two things change */</span>
+<span class="at">&lt;div</span> <span class="tk">class</span>=<span class="st">"vessel-marker"</span>
+     <span class="tk">style</span>=<span class="st">"color: #B6E84A; transform: rotate(127deg);"</span><span class="at">&gt;</span>
+  <span class="at">&lt;img</span> <span class="tk">src</span>=<span class="st">"/icons/ferry-deck.svg"</span> <span class="tk">alt</span>=<span class="st">"Wenatchee"</span> <span class="at">/&gt;</span>
+<span class="at">&lt;/div&gt;</span></pre>
+  <p style="margin-top: 18px;">
+    For React Native / native maps where <code>currentColor</code> isn't available on a remote asset, inline the SVG as a component and pass <code>fill</code> + <code>rotation</code> as props — the shape is small enough (3 elements) to inline cheaply.
+  </p>
+</div>
+
+<h2>Notes</h2>
+<div class="card">
+  <p><strong>Color contrast.</strong> All eight fleet colors above clear AAA against <code>#0B1A2E</code>. If you add new colors, target an APCA Lc ≥ 75 on the basemap.</p>
+  <p><strong>Multiple vessels close together.</strong> The glow halo lets two pins overlap a little without losing identity. If three+ vessels stack, cluster them and show a count badge instead.</p>
+  <p><strong>Heading source.</strong> If AIS heading is unavailable, fall back to course-over-ground (COG). If neither is available, render with rotation 0° and skip the glow to signal stale data.</p>
+  <p><strong>Anchor.</strong> Place the geographic coordinate at the icon's center (32, 32), not the bow tip — rotation around the bow looks unmoored.</p>
+</div>
+
+</body>
+</html>
