@@ -4,18 +4,28 @@
 
 Real-time WSDOT Seattle ↔ Bainbridge Island ferry tracker. Single deliverable: `ferry.html` — a fully self-contained HTML file with all CSS, JS, and Leaflet 1.9.4 inlined. No build step. Deployed to GitHub Pages at `https://demetrearges206.github.io/seattle-ferry-tracker/ferry.html`.
 
-## Current state (r35)
+## Current state (r43)
 
-- `const BUILD = 'r35'` in ferry.html
-- Featured card (`#schedFeatured`) renders above the Live Vessels map section
-- Live Vessels map renders between featured card and Upcoming list
-- Upcoming rows always use scheduled arrival (no live ETA contamination)
+- `const BUILD = 'r43'` in ferry.html
+- Inter font is inlined as base64 at deploy time via `.github/workflows/pages.yml` (not via CDN)
+- Featured card (`#schedFeatured`) renders above the Vessels map section
+- 4 card states: `at-dock`, `sailing`, `arriving`, `fallback` — driven by live vessel data
+- Progress bar at **top** of card (6px, gradient left→right, width = `--bar-w`)
+- For sailing/arriving: arrival time (large/white) on RIGHT, departed time (muted) on LEFT
+- Upcoming rows: 2-column flex — vessel name + dep time left, "ETA" label + arr time right
+- "Alerts" section replaces "Terminal Wait Times" — uses WSDOT `schedulebulletins` API
 - `partial` status state (amber dot): schedule works but vessels API offline
 - Direction toggle: `SEA-BI` (Seattle → Bainbridge) or `BI-SEA` (Bainbridge → Seattle)
 
+## Pending / next up
+
+- **Map redesign** — user wants to discuss map changes (new vessel designs coming)
+- Figma specs in `figma-specs/` — nodes 1076-120/146/173/229 (card states), 1074-967 (full mobile), 1074-1035 (upcoming row), 1074-1096 (refresh icon)
+
 ## File map
 
-- `ferry.html` — entire app. All CSS, JS, and Leaflet 1.9.4 inlined. ~215KB.
+- `ferry.html` — entire app. All CSS, JS, and Leaflet 1.9.4 inlined. ~225KB.
+- `.github/workflows/pages.yml` — deploys to GitHub Pages; inlines Inter font as base64 at build time.
 - `README.md` — project overview and deploy instructions.
 - `CLAUDE.md` — this file.
 
