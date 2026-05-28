@@ -1108,7 +1108,7 @@ svg.leaflet-image-layer.leaflet-interactive path {
 'use strict';
 
 // ── Build version — bump this string on every deploy ─────
-const BUILD = 'r48';
+const BUILD = 'r49';
 
 // ── Config ───────────────────────────────────────────────
 const API_KEY   = 'ff39cd9c-729e-40ac-b740-1cebec6226f9';
@@ -1622,16 +1622,7 @@ function renderSchedule() {
 
   // ── Featured card (renders into #schedFeatured) ────────
   if (cardState === 'fallback') {
-    featWrap.innerHTML = `
-      <div class="next-card" id="nextCard" data-state="fallback">
-        <div class="nc-header">
-          <div class="nc-vessel">
-            <span class="nc-vessel-icon">⛴</span>
-            <span class="nc-vessel-name" style="color:${getVesselColor(next.vessel)}">${next.vessel || 'Vessel TBD'}</span>
-          </div>
-        </div>
-        <div class="nc-fallback-msg" id="ncFallbackMsg">No live vessel data · Schedule only</div>
-      </div>`;
+    featWrap.innerHTML = '';
   } else {
     featWrap.innerHTML = `
       <div class="next-card" id="nextCard" data-state="${cardState}" style="--bar-w:0">
