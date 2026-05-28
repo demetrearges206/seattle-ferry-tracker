@@ -9,6 +9,9 @@
   <meta name="apple-mobile-web-app-title" content="SEA–BI Ferry">
   <meta name="theme-color" content="#060f1f">
   <title>Seattle ↔ Bainbridge Ferry</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap" rel="stylesheet">
   <style id="leaflet-css">
 /* required styles */
 
@@ -697,7 +700,7 @@ svg.leaflet-image-layer.leaflet-interactive path {
     body {
       background: var(--navy);
       color: var(--white);
-      font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', system-ui, sans-serif;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', system-ui, sans-serif;
       min-height: 100vh;
       overscroll-behavior-y: none;
       -webkit-font-smoothing: antialiased;
@@ -719,9 +722,9 @@ svg.leaflet-image-layer.leaflet-interactive path {
       -webkit-backdrop-filter: blur(12px);
     }
     .hdr-left { display: flex; flex-direction: column; gap: 3px; }
-    .route-name { font-size: 17px; font-weight: 700; letter-spacing: -0.3px; line-height: 1; }
-    .route-name .chevron { color: var(--teal); margin: 0 3px; }
-    .live-row { display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--mid); }
+    .route-name { font-size: 17px; font-weight: 700; letter-spacing: -0.3px; line-height: 1; color: #eef3ff; }
+    .route-name .chevron { color: var(--teal); margin: 0 3px; font-size: 14.7px; }
+    .live-row { display: flex; align-items: center; gap: 5px; font-size: 10.3px; color: var(--mid); }
     .build-tag { font-size: 10px; color: var(--dim); background: rgba(255,255,255,0.04); border-radius: 4px; padding: 1px 5px; font-variant-numeric: tabular-nums; }
     .live-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--teal); flex-shrink: 0; }
     .live-dot.live  { animation: livepulse 2s ease-in-out infinite; }
@@ -746,7 +749,7 @@ svg.leaflet-image-layer.leaflet-interactive path {
     .tab {
       flex: 1; padding: 11px 6px; background: none;
       border: none; border-bottom: 2px solid transparent;
-      color: var(--mid); font-size: 12px; font-weight: 700; letter-spacing: 0.3px;
+      color: var(--mid); font-size: 12px; font-weight: 700; letter-spacing: 0.3px; line-height: 15px;
       cursor: pointer; transition: color 0.15s, border-color 0.15s;
       -webkit-tap-highlight-color: transparent; text-align: center; white-space: nowrap;
     }
@@ -808,7 +811,7 @@ svg.leaflet-image-layer.leaflet-interactive path {
     .next-card {
       margin: 16px 16px 0; border-radius: 14px;
       background: #0e2040; border: 1px solid rgba(255,255,255,0.07);
-      padding: 16px 20px 16px; position: relative; overflow: hidden;
+      padding: 18px 20px 16px; position: relative; overflow: hidden;
       display: flex; flex-direction: column; gap: 5px;
     }
     /* Progress bar — bottom edge, width driven by --bar-w (0–1) */
@@ -824,12 +827,12 @@ svg.leaflet-image-layer.leaflet-interactive path {
     .nc-vessel { display: flex; align-items: center; gap: 8px; min-width: 0; }
     .nc-vessel-icon { font-size: 13px; color: var(--mid); flex-shrink: 0; }
     .nc-vessel-name {
-      font-size: 12.6px; font-weight: 700; white-space: nowrap;
+      font-size: 12.6px; font-weight: 700; line-height: 15px; white-space: nowrap;
       overflow: hidden; text-overflow: ellipsis;
     }
     /* Status badge */
     .nc-badge {
-      font-size: 11px; font-weight: 700; padding: 4px 8px;
+      font-size: 11px; font-weight: 700; line-height: 13px; padding: 4px 8px;
       border-radius: 8px; white-space: nowrap; flex-shrink: 0;
     }
     .nc-badge-dock     { background: rgba(33,150,243,0.12);  color: #2196f3; }
@@ -837,7 +840,7 @@ svg.leaflet-image-layer.leaflet-interactive path {
     .nc-badge-arriving { background: rgba(254,84,73,0.12);   color: #fe5449; }
     /* Countdown pill */
     .nc-pill {
-      font-size: 11px; font-weight: 700; padding: 5px 14px;
+      font-size: 11px; font-weight: 700; line-height: 17px; padding: 5px 14px;
       border-radius: 20px; white-space: nowrap; flex-shrink: 0; text-align: center;
     }
     .nc-pill-dock     { background: rgba(255,201,71,0.18);   color: #ffc947; }
@@ -849,7 +852,7 @@ svg.leaflet-image-layer.leaflet-interactive path {
       padding-bottom: 4px;
     }
     .nc-primary-label, .nc-secondary-label {
-      font-size: 9px; font-weight: 700; letter-spacing: 1.8px;
+      font-size: 9px; font-weight: 700; letter-spacing: 1.8px; line-height: 11px;
       text-transform: uppercase; margin-bottom: 6px;
     }
     .nc-primary-label   { color: #fff; }
@@ -867,7 +870,7 @@ svg.leaflet-image-layer.leaflet-interactive path {
 
     /* ── Section label ───────────────────────────────────────── */
     .section-label {
-      font-size: 9px; font-weight: 700; letter-spacing: 1.8px;
+      font-size: 9px; font-weight: 700; letter-spacing: 1.8px; line-height: 11px;
       text-transform: uppercase; color: var(--mid); padding: 16px 16px 10px;
     }
 
@@ -1078,7 +1081,7 @@ svg.leaflet-image-layer.leaflet-interactive path {
 'use strict';
 
 // ── Build version — bump this string on every deploy ─────
-const BUILD = 'r38';
+const BUILD = 'r39';
 
 // ── Config ───────────────────────────────────────────────
 const API_KEY   = 'ff39cd9c-729e-40ac-b740-1cebec6226f9';
