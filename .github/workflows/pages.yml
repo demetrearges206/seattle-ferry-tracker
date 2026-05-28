@@ -22,6 +22,37 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
+      - name: Inline Inter font as base64
+        run: |
+          curl -sL "https://cdn.jsdelivr.net/npm/@fontsource/inter@5/files/inter-latin-400-normal.woff2" -o /tmp/inter-400.woff2
+          curl -sL "https://cdn.jsdelivr.net/npm/@fontsource/inter@5/files/inter-latin-700-normal.woff2" -o /tmp/inter-700.woff2
+          python3 - <<'PYEOF'
+          import base64
+
+          with open('/tmp/inter-400.woff2', 'rb') as f:
+              b64_400 = base64.b64encode(f.read()).decode('ascii')
+          with open('/tmp/inter-700.woff2', 'rb') as f:
+              b64_700 = base64.b64encode(f.read()).decode('ascii')
+
+          with open('ferry.html', 'r', encoding='utf-8') as f:
+              html = f.read()
+
+          html = html.replace(
+              "url('https://cdn.jsdelivr.net/npm/@fontsource/inter@5/files/inter-latin-400-normal.woff2')",
+              f"url('data:font/woff2;base64,{b64_400}')"
+          )
+          html = html.replace(
+              "url('https://cdn.jsdelivr.net/npm/@fontsource/inter@5/files/inter-latin-700-normal.woff2')",
+              f"url('data:font/woff2;base64,{b64_700}')"
+          )
+
+          with open('ferry.html', 'w', encoding='utf-8') as f:
+              f.write(html)
+
+          print(f'Inlined Inter 400 ({len(b64_400)//1024}KB) and 700 ({len(b64_700)//1024}KB) as base64')
+          PYEOF
+
       - uses: actions/configure-pages@v4
       - uses: actions/upload-pages-artifact@v3
         with:
