@@ -4,9 +4,9 @@
 
 Real-time WSDOT Seattle ↔ Bainbridge Island ferry tracker. Single deliverable: `ferry.html` — a fully self-contained HTML file with all CSS, JS, and Leaflet 1.9.4 inlined. No build step. Deployed to GitHub Pages at `https://demetrearges206.github.io/seattle-ferry-tracker/ferry.html`.
 
-## Current state (r43)
+## Current state (r50)
 
-- `const BUILD = 'r43'` in ferry.html
+- `const BUILD = 'r50'` in ferry.html
 - Inter font is inlined as base64 at deploy time via `.github/workflows/pages.yml` (not via CDN)
 - Featured card (`#schedFeatured`) renders above the Vessels map section
 - 4 card states: `at-dock`, `sailing`, `arriving`, `fallback` — driven by live vessel data
@@ -16,6 +16,7 @@ Real-time WSDOT Seattle ↔ Bainbridge Island ferry tracker. Single deliverable:
 - "Alerts" section replaces "Terminal Wait Times" — uses WSDOT `schedulebulletins` API
 - `partial` status state (amber dot): schedule works but vessels API offline
 - Direction toggle: `SEA-BI` (Seattle → Bainbridge) or `BI-SEA` (Bainbridge → Seattle)
+- Vessel map markers: top-down ferry SVG icon (teardrop hull), rotates by heading, per-vessel palette color + glow
 
 ## Pending / next up
 
@@ -160,15 +161,32 @@ cdTimer = setInterval(updateCountdowns, 10s)  ← countdown pills only
 ## How to start a new cloud session (code.claude.com)
 
 1. Go to [code.claude.com](https://code.claude.com) and create a new session for the `demetrearges206/seattle-ferry-tracker` repo.
-2. Before starting, go to **Environment settings → Environment variables** and add:
-   - `FIGMA_ACCESS_TOKEN` = your Figma personal access token
-   - Get the token at figma.com → Account Settings (avatar top-left) → Personal access tokens → Generate new token (read-only scope is sufficient)
-3. The `.claude/settings.json` in this repo configures Figma MCP automatically. Once `FIGMA_ACCESS_TOKEN` is set in the environment, `npx @figma/mcp` will pick it up and `/mcp` will show the Figma server as connected.
-4. To verify Figma MCP is live, type `/mcp` in Claude Code — "figma" should appear in the list.
+2. No special environment variables needed — Figma access works via GitHub Actions (see below).
+
+## Figma integration (cloud sessions)
+
+Direct Figma MCP does **not** work in cloud/web sessions — `api.figma.com` is blocked by the network egress policy. `FIGMA_ACCESS_TOKEN` being set has no effect.
+
+**The working architecture:**
+```
+Figma API
+  ↓  (GitHub Actions fetches — unrestricted network)
+figma-specs/  in repo  (JSON + PNG images, committed by bot)
+  ↓  (GitHub MCP reads)
+Claude Code cloud session
+```
+
+**To sync a new Figma node:**
+1. Paste the Figma node URL(s) here in chat
+2. I commit them to `figma-specs/request.txt` and push to `main`
+3. `figma-sync-auto.yml` triggers automatically, fetches data, commits specs back
+4. I pull and read the specs, then implement
+
+No manual GitHub Actions trigger needed — the whole chain is hands-free once the URL is pasted.
 
 ## Known issues / open threads
 
-- **Figma MCP**: Configured in `.claude/settings.json`. Requires `FIGMA_ACCESS_TOKEN` set as an environment variable in the cloud session (see "How to start a new cloud session" above). No further code changes needed.
+- **Figma MCP in cloud**: Does not work directly (network policy). Use the git-trigger workflow above.
 - **CORS on `file://`**: Live API data won't load when opening ferry.html directly from disk in some browsers. Use `npx serve .` for local dev.
 - **Mobile cache**: After deploy, iOS Safari aggressively caches. Hard-clear or append `?bust=N` to URL to force reload.
 - **API key**: The default WSDOT demo key is public and shared. May occasionally rate-limit during high traffic. If needed, register for a key at wsdot.wa.gov.
