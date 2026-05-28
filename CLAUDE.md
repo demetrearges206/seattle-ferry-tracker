@@ -183,7 +183,7 @@ cdTimer = setInterval(updateCountdowns, 10s)  ← countdown pills only
 
 ## User preferences
 
-- **Always merge PRs automatically** after pushing — don't wait for the user to do it manually. Squash-merge, then close any superseded PRs from previous sessions.
+- **Always push live immediately.** After every change: commit → push → open PR (never draft) → squash-merge right away. Do not wait for the user to trigger any of these steps. Close any superseded PRs from previous sessions.
 
 ## Anti-regression notes
 
