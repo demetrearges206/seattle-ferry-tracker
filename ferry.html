@@ -1108,7 +1108,7 @@ svg.leaflet-image-layer.leaflet-interactive path {
 'use strict';
 
 // ── Build version — bump this string on every deploy ─────
-const BUILD = 'r46';
+const BUILD = 'r47';
 
 // ── Config ───────────────────────────────────────────────
 const API_KEY   = 'ff39cd9c-729e-40ac-b740-1cebec6226f9';
@@ -1567,42 +1567,17 @@ function renderSchedule() {
     return;
   }
 
-  // Find a vessel currently underway in the current direction (direction-aware)
-  const dirDep = direction === 'SEA-BI' ? TERMINALS.SEA.id : TERMINALS.BI.id;
-  const dirArr = direction === 'SEA-BI' ? TERMINALS.BI.id  : TERMINALS.SEA.id;
-  const activeLv = Array.isArray(vesselList)
-    ? vesselList.find(v => v.InService && !v.AtDock &&
-        v.DepartingTerminalID === dirDep && v.ArrivingTerminalID === dirArr)
-    : null;
-
-  const futureDeps = departures.filter(d => minsTo(d.depart) > -5);
-
-  let next, lv;
-  if (activeLv) {
-    // Pin the featured card to the currently-sailing trip
-    const activeTrip = [...departures].reverse()
-      .find(d => d.vessel === activeLv.VesselName && minsTo(d.depart) <= 0);
-    if (activeTrip) {
-      next = activeTrip;
-      lv = activeLv;
-    } else {
-      next = futureDeps[0];
-      lv = next ? getLiveVessel(next.vessel) : null;
-    }
-  } else {
-    next = futureDeps[0];
-    lv = next ? getLiveVessel(next.vessel) : null;
-  }
-
-  if (!next) {
+  const upcoming = departures.filter(d => minsTo(d.depart) > -5);
+  if (!upcoming.length) {
     featWrap.innerHTML = `<div class="empty-state"><strong>No more sailings today</strong>Last ferry has departed</div>`;
     wrap.innerHTML = '';
     renderFullSched(wrap, departures, null);
     return;
   }
 
-  // Upcoming: future departures excluding the currently-featured trip
-  const rest = futureDeps.filter(d => d !== next).slice(0, 3);
+  const next = upcoming[0];
+  const rest = upcoming.slice(1, 4);
+  const lv = getLiveVessel(next.vessel);
   const liveEta = (lv && !lv.AtDock) ? parseWSDot(lv.Eta) : null;
 
   // ── Determine card state ───────────────────────────────
