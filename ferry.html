@@ -1108,7 +1108,7 @@ svg.leaflet-image-layer.leaflet-interactive path {
 'use strict';
 
 // ── Build version — bump this string on every deploy ─────
-const BUILD = 'r47';
+const BUILD = 'r48';
 
 // ── Config ───────────────────────────────────────────────
 const API_KEY   = 'ff39cd9c-729e-40ac-b740-1cebec6226f9';
@@ -1578,13 +1578,20 @@ function renderSchedule() {
   const next = upcoming[0];
   const rest = upcoming.slice(1, 4);
   const lv = getLiveVessel(next.vessel);
-  const liveEta = (lv && !lv.AtDock) ? parseWSDot(lv.Eta) : null;
+
+  // Only use live data if the vessel is heading toward the correct destination for this tab
+  const dirDep = direction === 'SEA-BI' ? TERMINALS.SEA.id : TERMINALS.BI.id;
+  const dirArr = direction === 'SEA-BI' ? TERMINALS.BI.id  : TERMINALS.SEA.id;
+  const lvOnRoute = lv && !lv.AtDock &&
+    lv.DepartingTerminalID === dirDep && lv.ArrivingTerminalID === dirArr;
+  const liveEta = lvOnRoute ? parseWSDot(lv.Eta) : null;
 
   // ── Determine card state ───────────────────────────────
   let cardState;
   if (!lv) {
     cardState = 'fallback';
-  } else if (lv.AtDock) {
+  } else if (lv.AtDock || !lvOnRoute) {
+    // Vessel at dock, or sailing in opposite direction — show next scheduled departure
     cardState = 'at-dock';
   } else if (liveEta && minsTo(liveEta) <= 5) {
     cardState = 'arriving';
@@ -1596,7 +1603,7 @@ function renderSchedule() {
   const destLabel   = direction === 'SEA-BI' ? 'BI'  : 'SEA';
   const atDock = cardState === 'at-dock';
   const arriveTime   = liveEta || next.arrive;
-  const actualDepart = (!atDock && lv && lv.LeftDock) ? parseWSDot(lv.LeftDock) : next.depart;
+  const actualDepart = (!atDock && lvOnRoute && lv.LeftDock) ? parseWSDot(lv.LeftDock) : next.depart;
   const bigTime     = atDock ? next.depart : arriveTime;
   const smallTime   = atDock ? next.arrive : actualDepart;
   const bigLabel    = atDock ? `DEPARTS ${originLabel}` : `ARRIVES ${destLabel}`;
