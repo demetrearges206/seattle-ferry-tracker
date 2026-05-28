@@ -1132,7 +1132,7 @@ svg.leaflet-image-layer.leaflet-interactive path {
 'use strict';
 
 // ── Build version — bump this string on every deploy ─────
-const BUILD = 'r52';
+const BUILD = 'r53';
 
 // ── Config ───────────────────────────────────────────────
 const API_KEY   = 'ff39cd9c-729e-40ac-b740-1cebec6226f9';
@@ -1612,12 +1612,20 @@ function renderSchedule() {
     lv.DepartingTerminalID === dirDep && lv.ArrivingTerminalID === dirArr;
   const liveEta = lvOnRoute ? parseWSDot(lv.Eta) : null;
 
+  // Vessel sailing the opposite direction, heading toward our departure terminal
+  const lvApproaching = lv && !lv.AtDock && !lvOnRoute &&
+    lv.DepartingTerminalID === dirArr && lv.ArrivingTerminalID === dirDep;
+  const approachEta = lvApproaching ? parseWSDot(lv.Eta) : null;
+
   // ── Determine card state ───────────────────────────────
   let cardState;
   if (!lv) {
     cardState = 'fallback';
-  } else if (lv.AtDock || !lvOnRoute) {
-    // Vessel at dock, or sailing in opposite direction — show next scheduled departure
+  } else if (lv.AtDock) {
+    cardState = 'at-dock';
+  } else if (lvApproaching) {
+    cardState = minsTo(approachEta) <= 5 ? 'arriving' : 'sailing';
+  } else if (!lvOnRoute) {
     cardState = 'at-dock';
   } else if (liveEta && minsTo(liveEta) <= 5) {
     cardState = 'arriving';
@@ -1627,12 +1635,17 @@ function renderSchedule() {
 
   const atDock      = cardState === 'at-dock';
   const isArriving  = cardState === 'arriving';
-  const arriveTime  = liveEta || next.arrive;
-  const actualDepart = (!atDock && lvOnRoute && lv && lv.LeftDock) ? parseWSDot(lv.LeftDock) : next.depart;
+  const arriveTime  = lvApproaching ? approachEta : (liveEta || next.arrive);
+  const actualDepart = lvApproaching
+    ? ((lv && lv.LeftDock) ? parseWSDot(lv.LeftDock) : null)
+    : ((!atDock && lvOnRoute && lv && lv.LeftDock) ? parseWSDot(lv.LeftDock) : next.depart);
   const cdTarget    = atDock ? next.depart : arriveTime;
-  const returnDep   = (cardState !== 'fallback') ? getReturnDeparture(arriveTime) : null;
   const destName    = direction === 'SEA-BI' ? 'Bainbridge' : 'Seattle';
-  const footerText  = returnDep ? `Next: Departs ${destName} · ${fmtTime(returnDep.depart)}` : null;
+  const depTermName = direction === 'SEA-BI' ? 'Seattle' : 'Bainbridge';
+  const returnDep   = (!lvApproaching && cardState !== 'fallback') ? getReturnDeparture(arriveTime) : null;
+  const footerText  = lvApproaching
+    ? `Next: Departs ${depTermName} · ${fmtTime(next.depart)}`
+    : (returnDep ? `Next: Departs ${destName} · ${fmtTime(returnDep.depart)}` : null);
 
   // ── SEA (left) and BI (right) column values ─────────────
   // SEA is always on the left, BI always on the right.
@@ -1647,12 +1660,16 @@ function renderSchedule() {
     biTime     = arriveTime;
     biPrimary  = !atDock;
   } else {
-    biLabel    = atDock ? 'DEPARTS BI' : 'DEPARTED BI';
-    biTime     = atDock ? next.depart : actualDepart;
-    biPrimary  = atDock;
-    seaLabel   = 'ARRIVES SEA';
-    seaTime    = arriveTime;
-    seaPrimary = !atDock;
+    if (atDock) {
+      biLabel = 'DEPARTS BI'; biTime = next.depart; biPrimary = true;
+      seaLabel = 'ARRIVES SEA'; seaTime = next.arrive; seaPrimary = false;
+    } else if (lvApproaching) {
+      seaLabel = 'DEPARTED SEA'; seaTime = actualDepart || next.depart; seaPrimary = false;
+      biLabel  = isArriving ? 'ARRIVED BI' : 'ARRIVES BI'; biTime = approachEta; biPrimary = true;
+    } else {
+      biLabel = 'DEPARTED BI'; biTime = actualDepart; biPrimary = false;
+      seaLabel = isArriving ? 'ARRIVED SEA' : 'ARRIVES SEA'; seaTime = arriveTime; seaPrimary = true;
+    }
   }
   const { t: seaT, ap: seaAp } = splitTime(seaTime);
   const { t: biT,  ap: biAp  } = splitTime(biTime);
@@ -1663,10 +1680,15 @@ function renderSchedule() {
   const scheduledTripMs = next.arrive - next.depart;
   const computeBarPct = () => {
     if (atDock) return direction === 'SEA-BI' ? 3 : 97;
-    if (scheduledTripMs <= 0) return 50;
+    const totalTrip = (lvApproaching && actualDepart && approachEta)
+      ? approachEta - actualDepart
+      : scheduledTripMs;
+    if (totalTrip <= 0) return 50;
     const remaining = cdTarget - Date.now();
-    const pct = Math.max(3, Math.min(97, (1 - remaining / scheduledTripMs) * 100));
-    return direction === 'SEA-BI' ? pct : (100 - pct);
+    const pct = Math.max(3, Math.min(97, (1 - remaining / totalTrip) * 100));
+    // lvApproaching: vessel travels in OPPOSITE direction, so invert the direction check
+    const isForward = lvApproaching ? direction === 'BI-SEA' : direction === 'SEA-BI';
+    return isForward ? pct : (100 - pct);
   };
   const barPct    = computeBarPct();
   const ferryRot  = direction === 'SEA-BI' ? 90 : -90;
@@ -1794,10 +1816,14 @@ function renderSchedule() {
   const nextCardEl = document.getElementById('nextCard');
   function updateProgress() {
     if (!nextCardEl || cardState === 'fallback' || cardState === 'at-dock') return;
-    if (scheduledTripMs <= 0) return;
+    const totalTrip = (lvApproaching && actualDepart && approachEta)
+      ? approachEta - actualDepart
+      : scheduledTripMs;
+    if (totalTrip <= 0) return;
     const remaining = cdTarget - Date.now();
-    let pct = Math.max(3, Math.min(97, (1 - remaining / scheduledTripMs) * 100));
-    if (direction === 'BI-SEA') pct = 100 - pct;
+    let pct = Math.max(3, Math.min(97, (1 - remaining / totalTrip) * 100));
+    const isForward = lvApproaching ? direction === 'BI-SEA' : direction === 'SEA-BI';
+    if (!isForward) pct = 100 - pct;
     const pin  = document.getElementById('ncPin');
     const fill = document.getElementById('ncTrackFill');
     if (pin)  pin.style.left   = pct.toFixed(1) + '%';
