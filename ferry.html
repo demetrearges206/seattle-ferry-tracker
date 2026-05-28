@@ -1107,7 +1107,7 @@ svg.leaflet-image-layer.leaflet-interactive path {
 'use strict';
 
 // ── Build version — bump this string on every deploy ─────
-const BUILD = 'r41';
+const BUILD = 'r42';
 
 // ── Config ───────────────────────────────────────────────
 const API_KEY   = 'ff39cd9c-729e-40ac-b740-1cebec6226f9';
@@ -1735,7 +1735,7 @@ function renderVesselStrip() {
   const label = document.getElementById('vesselLabel');
   if (label) {
     label.querySelector('span:first-child') &&
-      (label.childNodes[0].textContent = `Live Vessels${rv.length ? ` · ${rv.length}` : ''} `);
+      (label.childNodes[0].textContent = `Vessels${rv.length ? ` · ${rv.length}` : ''} `);
     if (chevron) chevron.textContent = vesselStripOpen ? '▲' : '▼';
   }
 
