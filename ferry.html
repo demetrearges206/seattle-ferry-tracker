@@ -824,15 +824,9 @@ svg.leaflet-image-layer.leaflet-interactive path {
     .next-card {
       margin: 16px 16px 0; border-radius: 14px;
       background: #0e2040; border: 1px solid rgba(255,255,255,0.07);
-      padding: 18px 20px 16px; position: relative; overflow: hidden;
+      padding: 18px 20px 16px;
       display: flex; flex-direction: column; gap: 5px;
     }
-    /* Status strip — top edge, always full width */
-    .next-card::after {
-      content: ''; position: absolute; top: 0; left: 0; right: 0;
-      height: 6px; background: linear-gradient(90deg, #2196f3, var(--teal));
-    }
-    .next-card[data-state="at-dock"]::after { background: #2196f3; }
     /* Header */
     .nc-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
     .nc-vessel { display: flex; align-items: center; gap: 8px; min-width: 0; }
@@ -1132,7 +1126,7 @@ svg.leaflet-image-layer.leaflet-interactive path {
 'use strict';
 
 // ── Build version — bump this string on every deploy ─────
-const BUILD = 'r55';
+const BUILD = 'r56';
 
 // ── Config ───────────────────────────────────────────────
 const API_KEY   = 'ff39cd9c-729e-40ac-b740-1cebec6226f9';
@@ -1602,7 +1596,7 @@ function renderSchedule() {
   }
 
   const next = upcoming[0];
-  const rest = upcoming.slice(1, 4);
+  const rest = upcoming.slice(0, 3);
   const lv = getLiveVessel(next.vessel);
 
   // Only use live data if the vessel is heading toward the correct destination for this tab
