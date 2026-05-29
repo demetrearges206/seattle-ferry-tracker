@@ -872,12 +872,12 @@ svg.leaflet-image-layer.leaflet-interactive path {
     .nc-col-secondary .nc-t-ampm   { font-size: 24px; font-weight: 700; color: var(--mid); line-height: 1; }
     /* Route progress track */
     .nc-route-wrap { padding-top: 10px; }
-    .nc-track-row { display: flex; align-items: center; gap: 8px; }
+    .nc-track-row { display: flex; align-items: flex-start; gap: 8px; }
     .nc-track-ep-wrap { display: flex; flex-direction: column; align-items: center; gap: 5px; }
     .nc-track-label { font-size: 10px; color: var(--mid); letter-spacing: .5px; font-weight: 600; }
     .nc-track-line {
       flex: 1; height: 3px; background: var(--dim);
-      position: relative; border-radius: 2px;
+      position: relative; border-radius: 2px; margin-top: 5.5px;
     }
     .nc-track-fill { position: absolute; left: 0; top: 0; height: 100%; border-radius: 2px; background: var(--vc); width: 0; }
     /* Endpoint dots */
@@ -1140,7 +1140,7 @@ svg.leaflet-image-layer.leaflet-interactive path {
 'use strict';
 
 // ── Build version — bump this string on every deploy ─────
-const BUILD = 'r61';
+const BUILD = 'r62';
 
 // ── Config ───────────────────────────────────────────────
 const API_KEY   = 'ff39cd9c-729e-40ac-b740-1cebec6226f9';
