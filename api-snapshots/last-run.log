@@ -1,0 +1,7 @@
+Run at: 2026-05-29T15:25:23.976005+00:00
+API_KEY prefix: ff39cd9c...
+ERR https://www.wsdot.wa.gov/ferries/api/vessels/rest/vessellocations/ff39cd9c-729e-40ac-b740-1cebec6226f9 — HTTPError: HTTP Error 400: Bad Request
+ERR https://www.wsdot.wa.gov/ferries/api/vessels/rest/vesselbasics/ff39cd9c-729e-40ac-b740-1cebec6226f9 — HTTPError: HTTP Error 400: Bad Request
+ERR https://www.wsdot.wa.gov/ferries/api/vessels/rest/vesselverbose/ff39cd9c-729e-40ac-b740-1cebec6226f9 — HTTPError: HTTP Error 400: Bad Request
+ERR https://www.wsdot.wa.gov/ferries/api/schedule/rest/schedule/GetSchedule/ff39cd9c-729e-40ac-b740-1cebec6226f9/2026-05-29/Seattle-Bainbridge — HTTPError: HTTP Error 404: Not Found
+ERR https://www.wsdot.wa.gov/ferries/api/schedule/rest/schedule/GetSchedule/ff39cd9c-729e-40ac-b740-1cebec6226f9/2026-05-29/Bainbridge-Seattle — HTTPError: HTTP Error 404: Not Found
