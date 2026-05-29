@@ -1140,7 +1140,7 @@ svg.leaflet-image-layer.leaflet-interactive path {
 'use strict';
 
 // ── Build version — bump this string on every deploy ─────
-const BUILD = 'r60';
+const BUILD = 'r61';
 
 // ── Config ───────────────────────────────────────────────
 const API_KEY   = 'ff39cd9c-729e-40ac-b740-1cebec6226f9';
@@ -1634,8 +1634,13 @@ function renderSchedule() {
   const approachEta = lvApproaching ? parseWSDot(lv.Eta) : null;
 
   // ── Determine card state ───────────────────────────────
+  // Check OOS without the InService filter getLiveVessel applies
+  const lvAny = Array.isArray(vesselList) ? vesselList.find(v => v.VesselName === next.vessel) : null;
+
   let cardState;
-  if (!lv) {
+  if (lvAny && !lvAny.InService) {
+    cardState = 'oos';
+  } else if (!lv) {
     cardState = 'fallback';
   } else if (lv.AtDock) {
     cardState = 'at-dock';
@@ -1645,11 +1650,14 @@ function renderSchedule() {
     cardState = 'at-dock';
   } else if (liveEta && minsTo(liveEta) <= 5) {
     cardState = 'arriving';
+  } else if (liveEta && next.arrive && (liveEta - next.arrive) > 5 * 60 * 1000) {
+    cardState = 'delayed';
   } else {
     cardState = 'sailing';
   }
 
-  const atDock      = cardState === 'at-dock';
+  // oos behaves like at-dock for layout: show scheduled times, hide pin
+  const atDock      = cardState === 'at-dock' || cardState === 'oos';
   const isArriving  = cardState === 'arriving';
   const arriveTime  = lvApproaching ? approachEta : (liveEta || next.arrive);
   const actualDepart = lvApproaching
@@ -1728,9 +1736,16 @@ function renderSchedule() {
   const biDotCls  = cardState === 'at-dock'
     ? (isSeaBI ? 'ep-dot--hollow' : 'ep-dot--docked')
     : (isSeaBI ? 'ep-dot--vring'  : 'ep-dot--hollow');
-  const badgeCls = { 'at-dock': 'nc-badge--atdock', 'sailing': 'nc-badge--sailing', 'arriving': 'nc-badge--arriving' }[cardState] || '';
-  const pillCls  = { 'at-dock': 'nc-pill-dock',  'sailing': 'nc-pill-sailing',  'arriving': 'nc-pill-arriving'  }[cardState] || '';
-  const badgeText= { 'at-dock': 'At Dock',        'sailing': 'Sailing',          'arriving': 'Arriving'          }[cardState] || '';
+  const badgeCls = {
+    'at-dock': 'nc-badge--atdock', 'sailing': 'nc-badge--sailing',
+    'arriving': 'nc-badge--arriving', 'delayed': 'nc-badge--delayed',
+    'oos': 'nc-badge--oos',
+  }[cardState] || '';
+  const pillCls  = { 'at-dock': 'nc-pill-dock', 'sailing': 'nc-pill-sailing', 'arriving': 'nc-pill-arriving' }[cardState] || '';
+  const badgeText = {
+    'at-dock': 'At Dock', 'sailing': 'Sailing', 'arriving': 'Arriving',
+    'delayed': 'Delayed', 'oos': 'Out of service',
+  }[cardState] || '';
   const cd = (cardState !== 'fallback') ? countdownInfo(cdTarget) : { text: '', cls: '' };
 
   // ── Featured card (renders into #schedFeatured) ────────
