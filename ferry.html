@@ -855,15 +855,8 @@ svg.leaflet-image-layer.leaflet-interactive path {
     .nc-badge--departed { color: var(--st-departed); background: color-mix(in oklab, var(--st-departed) 18%, transparent); }
     .nc-badge--oos      { color: var(--st-oos);      background: color-mix(in oklab, var(--st-oos)      22%, transparent); }
     .nc-badge--cancelled{ color: var(--st-cancelled);background: color-mix(in oklab, var(--st-cancelled) 16%, transparent); }
-    /* Countdown pill — amber text for all states; bg varies */
-    .nc-pill {
-      font-size: 11px; font-weight: 700; line-height: 17px; padding: 5px 14px;
-      border-radius: 20px; white-space: nowrap; flex-shrink: 0; text-align: center;
-      color: #ffc947;
-    }
-    .nc-pill-dock     { background: rgba(255,255,255,0.10); }
-    .nc-pill-sailing  { background: rgba(255,201,71,0.18);  }
-    .nc-pill-arriving { background: rgba(255,201,71,0.18);  }
+    /* Countdown pill — hidden; nc-badge is the sole status indicator */
+    .nc-pill { display: none; }
     /* Time block — SEA always left, BI always right */
     .nc-times { display: flex; align-items: flex-end; justify-content: space-between; padding-bottom: 4px; }
     .nc-col-label {
@@ -1147,7 +1140,7 @@ svg.leaflet-image-layer.leaflet-interactive path {
 'use strict';
 
 // ── Build version — bump this string on every deploy ─────
-const BUILD = 'r59';
+const BUILD = 'r60';
 
 // ── Config ───────────────────────────────────────────────
 const API_KEY   = 'ff39cd9c-729e-40ac-b740-1cebec6226f9';
