@@ -101,20 +101,28 @@ The WSDOT API (`www.wsdot.wa.gov`) is also blocked from cloud sessions. Use the 
 
 ## WSDOT API endpoints
 
-Base URL: `https://www.wsdot.wa.gov/ferries/api/`
+**IMPORTANT: The API key is a QUERY PARAMETER, not a path segment.**
 
-| Endpoint | Purpose |
-|----------|---------|
-| `vessels/rest/vessellocations/{key}` | Live vessel positions, headings, ETAs, docked status |
-| `schedule/rest/schedule/GetSchedule/{key}/{date}/{route}` | Full day schedule for a route |
-| `terminals/rest/terminalwaittimes/{key}` | Terminal wait/reservation times |
-| `schedule/rest/schedulebulletins/{key}` | Service alerts / bulletins |
+```
+apiUrl(base, path) → `${base}/${path}?apiaccesscode=${API_KEY}`
+```
 
-**Demo API key** (public, shared): `7d7a5056-0f82-4547-a870-6db3db67b9d7`
+| Base | Path | Purpose |
+|------|------|---------|
+| `https://www.wsdot.wa.gov/ferries/api/vessels/rest` | `vessellocations` | Live vessel positions, headings, ETAs, docked status |
+| `https://www.wsdot.wa.gov/ferries/api/vessels/rest` | `vesselbasics` | Static fleet info (class, capacity) |
+| `https://www.wsdot.wa.gov/ferries/api/schedule/rest` | `scheduletoday/{dep_id}/{arr_id}/false` | Today's sailings between two terminals |
+| `https://www.wsdot.wa.gov/ferries/api/schedule/rest` | `schedule/{YYYY-MM-DD}/{dep_id}/{arr_id}` | Sailings for a specific date |
+| `https://www.wsdot.wa.gov/ferries/api/schedule/rest` | `schedulebulletins` | Service alerts |
+| `https://www.wsdot.wa.gov/ferries/api/terminals/rest` | `terminalwaittimes` | Terminal wait/reservation times |
 
-**Route codes for schedule endpoint:**
-- `SEA-BI` = `Seattle-Bainbridge` (use the full hyphenated name in the URL)
-- `BI-SEA` = `Bainbridge-Seattle`
+**Example full URLs (SEA→BI today):**
+```
+https://www.wsdot.wa.gov/ferries/api/vessels/rest/vessellocations?apiaccesscode={key}
+https://www.wsdot.wa.gov/ferries/api/schedule/rest/scheduletoday/7/3/false?apiaccesscode={key}
+```
+
+**API key:** Stored in `ferry.html` as `const API_KEY` and in the GitHub secret `WSDOT_API_KEY`. The demo fallback key `7d7a5056-0f82-4547-a870-6db3db67b9d7` is used if the secret is unset.
 
 **Date format:** `YYYY-MM-DD`
 

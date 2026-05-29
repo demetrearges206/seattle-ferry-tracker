@@ -5,6 +5,10 @@ Fetch WSDOT Traveler API snapshots and write them to api-snapshots/.
 Triggered by .github/workflows/wsdot-snapshot.yml when api-snapshots/request.txt changes.
 Reads request.txt for keywords: vessels, schedule, all.
 Writes pretty-printed JSON + a human-readable summary markdown.
+
+API format: key is a QUERY PARAMETER (?apiaccesscode=), NOT a path segment.
+  Vessels:  GET https://www.wsdot.wa.gov/ferries/api/vessels/rest/vessellocations?apiaccesscode={key}
+  Schedule: GET https://www.wsdot.wa.gov/ferries/api/schedule/rest/scheduletoday/{dep_id}/{arr_id}/false?apiaccesscode={key}
 """
 
 import json
@@ -13,67 +17,73 @@ import traceback
 import urllib.request
 from datetime import datetime, timezone
 
-API_KEY  = os.environ.get("WSDOT_API_KEY", "7d7a5056-0f82-4547-a870-6db3db67b9d7")
-BASE_URL = "https://www.wsdot.wa.gov/ferries/api"
-OUT_DIR  = "api-snapshots"
-TODAY    = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+API_KEY   = os.environ.get("WSDOT_API_KEY", "7d7a5056-0f82-4547-a870-6db3db67b9d7")
+VESS_BASE = "https://www.wsdot.wa.gov/ferries/api/vessels/rest"
+SCHED_BASE = "https://www.wsdot.wa.gov/ferries/api/schedule/rest"
+OUT_DIR   = "api-snapshots"
+TODAY     = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+
+# Terminal IDs
+SEA_ID = 7
+BI_ID  = 3
 
 ROUTES = [
-    ("Seattle-Bainbridge", "SEA-BI"),
-    ("Bainbridge-Seattle", "BI-SEA"),
+    (SEA_ID, BI_ID, "SEA-BI"),
+    (BI_ID, SEA_ID, "BI-SEA"),
 ]
+
+log_lines = []
+
+
+def api_url(base, path):
+    return f"{base}/{path}?apiaccesscode={API_KEY}"
 
 
 def fetch(url):
+    log_lines.append(f"GET {url}")
     print(f"  GET {url}")
     req = urllib.request.Request(url, headers={"Accept": "application/json"})
     with urllib.request.urlopen(req, timeout=30) as resp:
         raw = resp.read().decode()
-        print(f"  HTTP {resp.status} ({len(raw)} bytes)")
+        log_lines.append(f"  → HTTP {resp.status} ({len(raw):,} bytes)")
+        print(f"  → HTTP {resp.status} ({len(raw):,} bytes)")
         return json.loads(raw)
+
+
+def safe_fetch(url, label):
+    try:
+        return fetch(url)
+    except Exception as e:
+        msg = f"  ERROR {label}: {type(e).__name__}: {e}"
+        log_lines.append(msg)
+        print(msg)
+        traceback.print_exc()
+        return None
 
 
 def save(filename, data):
     path = os.path.join(OUT_DIR, filename)
     with open(path, "w") as f:
         json.dump(data, f, indent=2)
-    size = len(json.dumps(data))
-    print(f"  saved {path} ({size:,} bytes)")
+    print(f"  saved {path}")
     return path
 
 
 def fetch_vessels():
     print("\n=== Vessel Locations ===")
-    locs = None
-    try:
-        locs = fetch(f"{BASE_URL}/vessels/rest/vessellocations/{API_KEY}")
+    locs = safe_fetch(api_url(VESS_BASE, "vessellocations"), "vessellocations")
+    if locs:
         save("vessel-locations.json", locs)
-        print(f"  {len(locs)} vessels returned")
-    except Exception:
-        print("  ERROR fetching vessellocations:")
-        traceback.print_exc()
 
     print("\n=== Vessel Basics ===")
-    basics = None
-    try:
-        basics = fetch(f"{BASE_URL}/vessels/rest/vesselbasics/{API_KEY}")
+    basics = safe_fetch(api_url(VESS_BASE, "vesselbasics"), "vesselbasics")
+    if basics:
         save("vessel-basics.json", basics)
-        print(f"  {len(basics)} vessel basics returned")
-    except Exception:
-        print("  ERROR fetching vesselbasics (endpoint may differ):")
-        traceback.print_exc()
-        # Try alternate path
-        try:
-            basics = fetch(f"{BASE_URL}/vessels/rest/vesselverbose/{API_KEY}")
-            save("vessel-basics.json", basics)
-            print(f"  {len(basics)} vessel verbose records returned (alternate endpoint)")
-        except Exception:
-            print("  Alternate endpoint also failed.")
 
     # Write summary
     lines = [
-        f"# WSDOT Vessel Snapshot — {TODAY}\n",
-        f"Fetched at: {datetime.now(timezone.utc).isoformat()}\n",
+        f"# WSDOT Vessel Snapshot — {TODAY}",
+        f"\nFetched at: {datetime.now(timezone.utc).isoformat()}\n",
     ]
 
     if locs:
@@ -116,46 +126,39 @@ def fetch_vessels():
 
 def fetch_schedule():
     print("\n=== Schedules ===")
-    lines = [f"# WSDOT Schedule Snapshot — {TODAY}\n",
-             f"Fetched at: {datetime.now(timezone.utc).isoformat()}\n"]
+    lines = [f"# WSDOT Schedule Snapshot — {TODAY}",
+             f"\nFetched at: {datetime.now(timezone.utc).isoformat()}\n"]
 
-    for route_name, abbrev in ROUTES:
-        url = f"{BASE_URL}/schedule/rest/schedule/GetSchedule/{API_KEY}/{TODAY}/{route_name}"
-        try:
-            data = fetch(url)
-            save(f"schedule-{abbrev}-{TODAY}.json", data)
-        except Exception:
-            print(f"  ERROR fetching schedule for {abbrev}:")
-            traceback.print_exc()
+    for dep_id, arr_id, abbrev in ROUTES:
+        url = api_url(SCHED_BASE, f"scheduletoday/{dep_id}/{arr_id}/false")
+        data = safe_fetch(url, f"schedule {abbrev}")
+        if not data:
             lines.append(f"\n## {abbrev}\n*Unavailable*\n")
             continue
 
+        save(f"schedule-{abbrev}-{TODAY}.json", data)
+
         sailings = []
         try:
-            # WSDOT schedule structure: ScheduledRoutes > ScheduledTimes
-            # Try multiple known structures
-            times_found = False
-            for top_key in ("ScheduledRoutes", "TerminalCombos"):
-                for route_block in data.get(top_key, []):
-                    for times_key in ("ScheduledTimes", "Times"):
-                        for s in route_block.get(times_key, []):
-                            dep    = s.get("DepartingTime") or s.get("DepartTime") or "?"
-                            arr    = s.get("ArrivingTime")  or s.get("ArriveTime")  or "?"
-                            vessel = s.get("VesselName") or "?"
-                            sailings.append((dep, arr, vessel))
-                            times_found = True
-            if not times_found:
-                # Dump the top-level keys so we can learn the structure
-                lines.append(f"\n## {abbrev} — raw top-level keys: {list(data.keys())}\n")
-                continue
-        except Exception:
-            traceback.print_exc()
+            for t in data.get("TerminalCombos", []):
+                for s in t.get("Times", []):
+                    dep    = s.get("DepartingTime") or s.get("DepartTime") or "?"
+                    arr    = s.get("ArrivingTime")  or s.get("ArriveTime")  or "?"
+                    vessel = s.get("VesselName") or "?"
+                    sailings.append((dep, arr, vessel))
+        except Exception as e:
+            lines.append(f"\n## {abbrev}\nParse error: {e}\n")
+            lines.append(f"Top-level keys: {list(data.keys())}\n")
+            continue
 
-        lines.append(f"\n## {abbrev} — {len(sailings)} sailings\n")
-        lines.append("| Departs | Arrives | Vessel |")
-        lines.append("|---------|---------|--------|")
-        for dep, arr, ves in sailings:
-            lines.append(f"| {dep} | {arr} | {ves} |")
+        if not sailings:
+            lines.append(f"\n## {abbrev}\nNo sailings parsed. Top-level keys: {list(data.keys())}\n")
+        else:
+            lines.append(f"\n## {abbrev} — {len(sailings)} sailings\n")
+            lines.append("| Departs | Arrives | Vessel |")
+            lines.append("|---------|---------|--------|")
+            for dep, arr, ves in sailings:
+                lines.append(f"| {dep} | {arr} | {ves} |")
 
     with open(os.path.join(OUT_DIR, f"schedule-summary-{TODAY}.md"), "w") as f:
         f.write("\n".join(lines) + "\n")
@@ -163,20 +166,8 @@ def fetch_schedule():
 
 
 def main():
-    log_lines = [f"Run at: {datetime.now(timezone.utc).isoformat()}",
-                 f"API_KEY prefix: {API_KEY[:8]}..."]
-
-    # Monkey-patch fetch to also log to file
-    original_fetch = globals()['fetch']
-    def logged_fetch(url):
-        try:
-            result = original_fetch(url)
-            log_lines.append(f"OK  {url}")
-            return result
-        except Exception as e:
-            log_lines.append(f"ERR {url} — {type(e).__name__}: {e}")
-            raise
-    globals()['fetch'] = logged_fetch
+    log_lines.append(f"Run at: {datetime.now(timezone.utc).isoformat()}")
+    log_lines.append(f"API_KEY prefix: {API_KEY[:8]}...")
 
     request_file = os.path.join(OUT_DIR, "request.txt")
     if not os.path.exists(request_file):
