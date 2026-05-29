@@ -12,6 +12,8 @@ Real-time WSDOT Seattle ↔ Bainbridge Island ferry tracker. Single deliverable:
 - Featured card (`#schedFeatured`) renders above the Vessels/map section
 - Upcoming section (`#schedContent`) shows `upcoming.slice(0, 3)` — starts with the current active sailing
 - Vessel map markers: teardrop SVG icon, rotates by heading, per-vessel palette color with glow (dimmer when docked)
+- Progress track at bottom of featured card — SEA always left, BI always right; ferry icon moves along it
+- `lvApproaching` state: vessel on return leg toward our departure terminal shows sailing/arriving (not at-dock)
 
 ## File map
 
@@ -27,7 +29,23 @@ Real-time WSDOT Seattle ↔ Bainbridge Island ferry tracker. Single deliverable:
 - `api-snapshots/request.txt` — keywords (`vessels`, `schedule`, `all`); committing here triggers auto-snapshot
 - `api-snapshots/*.json` / `api-snapshots/*-summary.md` — live API snapshots committed by bot
 - `design/Boat Icon/ferry-deck.svg` — source SVG for vessel map marker icon
+- `wsdot-attributes.md` — design reference: vessel list, API fields, card states, countdown pill states
 - `CLAUDE.md` — this file
+
+---
+
+## Cloud session notes (code.claude.com)
+
+**Branch issue:** Every code.claude.com session automatically assigns a feature branch (e.g. `claude/bold-volta-8GEoB`). The session environment instructs Claude to develop on that branch and open a PR. This conflicts with the project preference of always pushing directly to `main`.
+
+**Workaround:** Push directly to `main` using the GitHub MCP tool (`mcp__github__create_or_update_file`) rather than local `git push`. This bypasses the branch entirely. Use this for all changes so they go live immediately.
+
+**How to start a new cloud session:**
+1. Go to [code.claude.com](https://code.claude.com) and create a new session for the `demetrearges206/seattle-ferry-tracker` repo
+2. Set environment variables if needed:
+   - `FIGMA_ACCESS_TOKEN` — only needed if you want to test direct Figma MCP (currently blocked by network policy; use the git-trigger workflow instead)
+   - `WSDOT_API_KEY` — already set as a GitHub secret; not needed as an env var in the session
+3. The session will clone `main` and have full git access
 
 ---
 
@@ -95,15 +113,13 @@ The WSDOT API (`www.wsdot.wa.gov`) is also blocked from cloud sessions. Use the 
 - Ensure Actions are enabled: Settings → Actions → General → Allow all actions
 - Ensure the workflow has write permission: Settings → Actions → General → Workflow permissions → Read and write
 
-**Maximum wait time:** If the bot hasn't committed within ~60 seconds of the push, something failed — check the Actions tab rather than polling indefinitely.
-
 ---
 
 ## WSDOT API endpoints
 
 **IMPORTANT: The API key is a QUERY PARAMETER, not a path segment.**
 
-```
+```js
 apiUrl(base, path) → `${base}/${path}?apiaccesscode=${API_KEY}`
 ```
 
@@ -112,36 +128,12 @@ apiUrl(base, path) → `${base}/${path}?apiaccesscode=${API_KEY}`
 | `https://www.wsdot.wa.gov/ferries/api/vessels/rest` | `vessellocations` | Live vessel positions, headings, ETAs, docked status |
 | `https://www.wsdot.wa.gov/ferries/api/vessels/rest` | `vesselbasics` | Static fleet info (class, capacity) |
 | `https://www.wsdot.wa.gov/ferries/api/schedule/rest` | `scheduletoday/{dep_id}/{arr_id}/false` | Today's sailings between two terminals |
-| `https://www.wsdot.wa.gov/ferries/api/schedule/rest` | `schedule/{YYYY-MM-DD}/{dep_id}/{arr_id}` | Sailings for a specific date |
 | `https://www.wsdot.wa.gov/ferries/api/schedule/rest` | `schedulebulletins` | Service alerts |
 | `https://www.wsdot.wa.gov/ferries/api/terminals/rest` | `terminalwaittimes` | Terminal wait/reservation times |
 
-**Example full URLs (SEA→BI today):**
-```
-https://www.wsdot.wa.gov/ferries/api/vessels/rest/vessellocations?apiaccesscode={key}
-https://www.wsdot.wa.gov/ferries/api/schedule/rest/scheduletoday/7/3/false?apiaccesscode={key}
-```
+**API key:** Stored in `ferry.html` as `const API_KEY` and in the GitHub secret `WSDOT_API_KEY`. Demo fallback: `7d7a5056-0f82-4547-a870-6db3db67b9d7`.
 
-**API key:** Stored in `ferry.html` as `const API_KEY` and in the GitHub secret `WSDOT_API_KEY`. The demo fallback key `7d7a5056-0f82-4547-a870-6db3db67b9d7` is used if the secret is unset.
-
-**Date format:** `YYYY-MM-DD`
-
-**Vessel API key fields used in the app:**
-
-| Field | Type | Meaning |
-|-------|------|---------|
-| `VesselName` | string | e.g. `"Tacoma"`, `"Wenatchee"` |
-| `Lat`, `Lon` | float | Current GPS position |
-| `Heading` | int | Degrees 0–359 |
-| `AtDock` | bool | True when vessel is tied up at a terminal |
-| `LeftDock` | `/Date(ms)/` | When vessel last departed a terminal |
-| `Eta` | `/Date(ms)/` | Live ETA at next terminal (only valid for current active trip) |
-| `DepartingTerminalID` | int | Terminal vessel is sailing FROM |
-| `ArrivingTerminalID` | int | Terminal vessel is sailing TO |
-| `InService` | bool | False = out of service / maintenance |
-| `Speed` | float | Knots |
-
-**Terminal IDs (constants in code):**
+**Terminal IDs:**
 ```js
 const TERMINALS = {
   SEA: { id: 7,  name: 'Seattle',          abbrev: 'SEA' },
@@ -149,43 +141,47 @@ const TERMINALS = {
 };
 ```
 
-**Date parsing:** All WSDOT dates are `/Date(milliseconds-offset)/` strings — use `parseWSDot(str)`.
+**Date format:** All WSDOT dates are `/Date(milliseconds-offset)/` strings — use `parseWSDot(str)`.
+
+**Key vessel API fields:**
+
+| Field | Type | Meaning |
+|-------|------|---------|
+| `VesselName` | string | e.g. `"Tacoma"` |
+| `Lat`, `Lon` | float | GPS position |
+| `Heading` | int | Degrees 0–359 |
+| `AtDock` | bool | True when tied up at terminal |
+| `LeftDock` | `/Date(ms)/` | When vessel last departed |
+| `Eta` | `/Date(ms)/` | Live ETA at next terminal (current trip only) |
+| `DepartingTerminalID` | int | Terminal sailing FROM |
+| `ArrivingTerminalID` | int | Terminal sailing TO |
+| `InService` | bool | False = maintenance |
+| `Speed` | float | Knots |
 
 ---
 
 ## WSF vessel fleet
 
-The `vessellocations` endpoint returns all vessels system-wide. **No explicit status string is returned** — status is derived from `AtDock`, `InService`, and `Eta`.
+21 vessels total as of 2026-05-29. Full list with classes and attributes in `wsdot-attributes.md`.
 
-### Vessels assigned to Seattle–Bainbridge route
-| Vessel | Class | Notes |
-|--------|-------|-------|
-| Wenatchee | Jumbo Mark II | Primary |
-| Tacoma | Jumbo Mark II | Primary |
-| Puyallup | Jumbo Mark II | Relief / backup |
-| Chimacum | Olympic class | Smaller, occasional |
-| Suquamish | Olympic class | Smaller, occasional |
+**Seattle–Bainbridge primary vessels:** Wenatchee, Tacoma (Jumbo Mark II class)
 
-### Full active WSF fleet (all routes)
-Cathlamet, Chelan, Chetzemoka, Chimacum, Hyak, Issaquah, Kaleetan, Kennewick, Kitsap, Kittitas, Klahowya, Puyallup, Samish, Sealth, Spokane, Suquamish, Tacoma, Tillikum, Tokitae, Walla Walla, Wenatchee
+**Derived vessel statuses:**
 
-### Derived vessel statuses (how the app uses API fields)
-
-| `InService` | `AtDock` | App card state | Badge shown |
-|-------------|----------|---------------|-------------|
-| `false` | any | Filtered out — not shown | — |
+| `InService` | `AtDock` | App state | Badge |
+|-------------|----------|-----------|-------|
+| `false` | any | Filtered out | — |
 | `true` | `true` | `at-dock` | **At Dock** |
-| `true` | `false` | `sailing` or `arriving` | **Sailing** / **Arriving** |
+| `true` | `false`, ETA > 5 min | `sailing` | **Sailing** |
+| `true` | `false`, ETA ≤ 5 min | `arriving` | **Arriving** |
 
-`arriving` triggers when `minsTo(lv.Eta) <= 5` (or `minsTo(approachEta) <= 5` for `lvApproaching`).
+**Countdown pill text (`countdownInfo()`):**
 
-### Countdown pill text (from `countdownInfo()`)
-
-| Condition (`minsTo(cdTarget)`) | Pill text | Color |
-|-------------------------------|-----------|-------|
-| ≥ 60 min | `"Xh Xm"` | neutral |
-| 10–59 min | `"Xm"` | neutral |
-| 0–9 min | `"Xm"` | red |
+| `minsTo(cdTarget)` | Text | Color |
+|--------------------|------|-------|
+| ≥ 60 | `"Xh Xm"` | neutral |
+| 10–59 | `"Xm"` | neutral |
+| 0–9 | `"Xm"` | red |
 | −5 to 0 | `"Leaving"` | red |
 | < −5 | `"Departed"` | muted |
 
@@ -208,23 +204,22 @@ let cdTimer = null;         // interval handle for 10s countdown ticks
 
 | Function | Purpose |
 |----------|---------|
-| `refresh(fullRefresh)` | Main fetch loop — `Promise.allSettled` over all 3 APIs, updates state, re-renders |
+| `refresh(fullRefresh)` | Main fetch loop — `Promise.allSettled` over all APIs, updates state, re-renders |
 | `renderSchedule()` | Featured card → `#schedFeatured`; upcoming + full schedule → `#schedContent` |
-| `renderVesselStrip()` | Vessel icon strip (`#vesselStrip`) |
-| `renderVessels()` | Updates Leaflet map markers |
+| `renderVessels()` | Updates Leaflet map markers + vessel strip |
 | `renderWaitTimes()` | Terminal wait table (`#waitContent`) |
 | `getDepartures()` | Today's departures for current `direction` from `scheduleData` |
 | `getReturnDeparture(afterTime)` | Temporarily swaps `direction`; gets next opposite-direction departure |
-| `getLiveVessel(name)` | Live vessel object from `vesselList` for a given vessel name |
-| `routeVessels()` | `vesselList` filtered to vessels on the current SEA↔BI route |
+| `getLiveVessel(name)` | Live vessel object from `vesselList` |
+| `routeVessels()` | `vesselList` filtered to SEA↔BI route vessels |
 | `countdownInfo(date)` | `{text, cls}` for countdown pill |
 | `setStatus(state)` | Header dot + text (`loading`/`live`/`partial`/`stale`) |
 | `fmtTime(date)` | Date → `"h:mm AM/PM"` |
-| `splitTime(date)` | Date → `{t: "h:mm", ap: "AM"}` for display in card columns |
 | `parseWSDot(str)` | `/Date(ms-offset)/` → JS Date |
 | `minsTo(date)` | Minutes from now to a Date (negative = past) |
-| `vesselMarkerIcon(heading, atDock, name)` | Returns `L.divIcon` with ferry SVG for map |
+| `vesselMarkerIcon(heading, atDock, name)` | `L.divIcon` with ferry SVG for map |
 | `getVesselColor(name)` | Per-vessel stable color from `VESSEL_PALETTE` |
+| `updateProgress()` | Repositions `#ncPin` and `#ncTrackFill` every 10s |
 
 ### Render targets (HTML structure)
 
@@ -239,72 +234,56 @@ let cdTimer = null;         // interval handle for 10s countdown ticks
 
 ---
 
-## Featured card (renderSchedule) — detailed
+## Featured card — detailed
 
-### Live vessel detection
+### `lvApproaching` logic
 
 ```js
 const dirDep = direction === 'SEA-BI' ? TERMINALS.SEA.id : TERMINALS.BI.id;
 const dirArr = direction === 'SEA-BI' ? TERMINALS.BI.id  : TERMINALS.SEA.id;
 
-// Vessel traveling in the correct direction for this tab
-const lvOnRoute = lv && !lv.AtDock &&
+const lvOnRoute     = lv && !lv.AtDock &&
   lv.DepartingTerminalID === dirDep && lv.ArrivingTerminalID === dirArr;
 
-// Vessel traveling the RETURN leg toward our departure terminal
 const lvApproaching = lv && !lv.AtDock && !lvOnRoute &&
   lv.DepartingTerminalID === dirArr && lv.ArrivingTerminalID === dirDep;
 ```
 
-`lvApproaching` is critical: when the vessel is on its return trip (e.g., sailing BI→SEA while we're on the SEA→BI tab), the card shows the approach in progress rather than a static "At Dock" state.
+When `lvApproaching`, the vessel is on its return leg heading toward our departure terminal. Show it as sailing/arriving rather than at-dock.
 
 ### Card states
 
 | State | Condition | Pin position |
 |-------|-----------|-------------|
-| `fallback` | No live vessel data | Hidden |
-| `at-dock` | `lv.AtDock` OR (`!lvOnRoute && !lvApproaching`) | Parked at departure terminal (3% SEA or 97% BI) |
-| `sailing` | `lvApproaching` with >5 min to arrival, OR `lvOnRoute` with >5 min ETA | Moving along track |
-| `arriving` | `lvApproaching` with ≤5 min to arrival, OR `lvOnRoute` with ≤5 min ETA | Near arrival terminal |
+| `fallback` | No live vessel | Hidden |
+| `at-dock` | `lv.AtDock` or no route match | 3% (SEA side) or 97% (BI side) |
+| `sailing` | Underway, ETA > 5 min | Along track |
+| `arriving` | Underway, ETA ≤ 5 min | Near arrival end |
 
-### Track / progress bar
+### Progress track
 
-- **SEA always left (0%), BI always right (100%)** — fixed regardless of direction tab
-- `nc-track-fill` width = 0% when `at-dock`; otherwise = pin position %
-- `nc-vessel-pin` left = `barPct` (3–97%, clamped)
-- Ferry icon rotated: `((direction === 'SEA-BI') !== lvApproaching) ? 90 : -90` — always points toward the terminal the vessel is heading to
-- `updateProgress()` fires every 10s via `cdTimer`; uses `cdTarget` (live ETA-based) and `scheduledTripMs` to reposition pin without needing `LeftDock`
+- SEA always left (0%), BI always right (100%)
+- `nc-track-fill` width = 0% when at-dock; = pin% when sailing
+- Ferry icon rotation: `((direction === 'SEA-BI') !== lvApproaching) ? 90 : -90`
+- `updateProgress()` fires every 10s via `cdTimer`; uses `cdTarget` (no dependency on `LeftDock`)
 
-### Column layout (SEA left, BI right)
+### Column labels
 
 **SEA→BI tab:**
 
 | State | SEA col (left) | BI col (right) |
 |-------|----------------|----------------|
 | `at-dock` | DEPARTS SEA + `next.depart` (primary) | ARRIVES BI + `next.arrive` |
-| `lvApproaching` (vessel BI→SEA) | ARRIVES SEA + `approachEta` (primary) | DEPARTED BI + `actualDepart` |
-| `sailing` / `arriving` | DEPARTED SEA + `actualDepart` | ARRIVES/ARRIVED BI + `arriveTime` (primary) |
+| `lvApproaching` | ARRIVES SEA + `approachEta` (primary) | DEPARTED BI + `actualDepart` |
+| `sailing`/`arriving` | DEPARTED SEA + `actualDepart` | ARRIVES BI + `arriveTime` (primary) |
 
 **BI→SEA tab:**
 
 | State | SEA col (left) | BI col (right) |
 |-------|----------------|----------------|
 | `at-dock` | ARRIVES SEA + `next.arrive` | DEPARTS BI + `next.depart` (primary) |
-| `lvApproaching` (vessel SEA→BI) | DEPARTED SEA + `actualDepart` | ARRIVES/ARRIVED BI + `approachEta` (primary) |
-| `sailing` / `arriving` | ARRIVES/ARRIVED SEA + `arriveTime` (primary) | DEPARTED BI + `actualDepart` |
-
-**Primary column** = large text (42px). Secondary = muted smaller text.
-
-### Countdown pill
-
-- `cdTarget` = `next.depart` when at-dock; `arriveTime` (or `approachEta`) when sailing/arriving
-- `countdownInfo(cdTarget)` → pill text: `"Xm"`, `"Leaving"`, `"Departed"`, etc.
-- `#ncPinTime` below the ferry icon on the track shows the same text (hidden when at-dock)
-
-### Footer line
-
-- Normal: `"Next: Departs [destination] · [time]"` via `getReturnDeparture()`
-- `lvApproaching`: `"Next: Departs [departure terminal] · [next.depart]"`
+| `lvApproaching` | DEPARTED SEA + `actualDepart` | ARRIVES BI + `approachEta` (primary) |
+| `sailing`/`arriving` | ARRIVES SEA + `arriveTime` (primary) | DEPARTED BI + `actualDepart` |
 
 ---
 
@@ -312,7 +291,7 @@ const lvApproaching = lv && !lv.AtDock && !lvOnRoute &&
 
 ```css
 --bg:     #0d1117   /* page background */
---card:   #161b22   /* generic card surface */
+--card:   #161b22   /* card surface */
 --border: #30363d   /* borders */
 --text:   #e6edf3   /* primary text */
 --mid:    #8b949e   /* secondary/muted text */
@@ -322,12 +301,10 @@ const lvApproaching = lv && !lv.AtDock && !lvOnRoute &&
 --teal:   #58a6ff   /* accent / links */
 ```
 
-**Featured card uses its own dark palette** (`#0e2040` background, `rgba(255,255,255,0.07)` border) defined directly in `.next-card`.
-
-**Vessel color palette** (`VESSEL_PALETTE` array, indexed by stable hash of vessel name):
+**Vessel color palette** (`VESSEL_PALETTE`, indexed by stable hash of vessel name):
 `#00c9a7`, `#ffc947`, `#f472b6`, `#60a5fa`, `#fb923c`, `#a3e635`, `#c084fc`, `#f87171`
 
-Vessels always use their palette color (including when docked). Docked state indicated by dimmer glow only.
+Always use palette color for vessel markers — docked state shown by dimmer glow only, not a different color.
 
 ---
 
@@ -336,15 +313,13 @@ Vessels always use their palette color (including when docked). Docked state ind
 ```
 DOMContentLoaded
   → render cached schedule immediately (wsf_sched_v1) if present
-  → refresh(!bootCache)  ← full refresh; skips schedule fetch if cache hit
+  → refresh(!bootCache)
 
 setInterval(refresh(false), 60s)      ← vessels + wait times only
 setInterval(refresh(true),  10min)    ← full refresh including schedule
-setInterval(updateStaleLabel, 60s)    ← re-renders "Updated Xm ago" label
-cdTimer = setInterval(updateProgress+updateCountdowns, 10s)  ← pin + pill ticks
+setInterval(updateStaleLabel, 60s)    ← "Updated Xm ago" label
+cdTimer = setInterval(updateProgress + updateCountdowns, 10s)
 ```
-
-`refresh()` uses `Promise.allSettled` — single API failure doesn't block others. Missing data falls back to last known good or safe defaults (`[]` / `null`).
 
 ---
 
@@ -353,18 +328,17 @@ cdTimer = setInterval(updateProgress+updateCountdowns, 10s)  ← pin + pill tick
 | Key | Contents | TTL |
 |-----|----------|-----|
 | `wsf_sched_v1` | `{ date: "YYYY-MM-DD", data: <raw schedule> }` | Invalidated when date ≠ today |
-| `ferry_tip_v1` | `"1"` | Permanent — home screen tip shown flag |
+| `ferry_tip_v1` | `"1"` | Permanent — home screen tip flag |
 
 ---
 
 ## Map implementation
 
-- **Leaflet 1.9.4** fully inlined in `ferry.html`
-- **Instance vars:** `leafMap` (`#ferry-map`), optional `miniMap` (overview inset)
-- **Vessel markers:** `L.divIcon` with teardrop ferry SVG, rotated by `Heading`, per-vessel color + glow
-- **Init:** `initMap()` called once on `DOMContentLoaded`. Container must be non-zero size.
-- **After hide/show:** call `leafMap.invalidateSize({ reset: true })` — already wired to the vessel section toggle. Never skip — tile grid goes blank without it.
-- **Tile layer:** OpenStreetMap `https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png` (no key needed)
+- Leaflet 1.9.4 fully inlined in `ferry.html`
+- Vessel markers: `L.divIcon` with teardrop ferry SVG, rotated by `Heading`, per-vessel color + glow
+- Init: `initMap()` called once on `DOMContentLoaded`; container must be non-zero size
+- After hide/show: call `leafMap.invalidateSize({ reset: true })` — wired to vessel section toggle
+- Tile layer: OpenStreetMap (no API key required)
 
 ---
 
@@ -383,29 +357,30 @@ cdTimer = setInterval(updateProgress+updateCountdowns, 10s)  ← pin + pill tick
 
 1. Edit `ferry.html`
 2. Bump `const BUILD` (r57 → r58, etc.)
-3. Commit + push to `main`
+3. Push directly to `main` — use `mcp__github__create_or_update_file` if in a cloud session with a forced branch, otherwise `git push origin main`
 4. GitHub Pages auto-deploys in ~30s
 5. User may need hard cache clear on iOS Safari (`?bust=N` appended to URL)
 
-**Always push live immediately** — commit → push to `main`. No PRs, no waiting.
+**Always push live immediately — commit → push to `main`. No PRs, no branches, no waiting.**
 
 ---
 
 ## Anti-regression notes
 
-- **Never use `lv.Eta` for future scheduled trips** — live ETA is only valid for the vessel's current active trip. Upcoming rows always use `d.arrive` (scheduled).
-- **`vesselList` always defaults to `[]`** on API failure — never undefined. All consumers guard with `Array.isArray`.
-- **`getReturnDeparture()`** temporarily swaps the global `direction` and restores it. Must be atomic — don't refactor without preserving swap/restore.
-- **Leaflet container** must be visible before `L.map()` init. Already handled — don't change init order.
-- **`lvApproaching` logic**: when vessel is on the return leg heading toward our departure terminal, show it as sailing/arriving (not at-dock). The track position, ferry icon rotation, and column labels all use separate logic for this case. See "Featured card" section above.
-- **Track fill vs pin position**: at-dock state → fill = 0%, pin = 3%/97%. Sailing → fill = pin = barPct. Never set fill to barPct when at-dock.
-- **`cdTarget`** is `next.depart` when at-dock, `arriveTime` when sailing. `updateProgress()` always reads `cdTarget` — it's a closure variable from `renderSchedule()`.
+- **Never use `lv.Eta` for future scheduled trips** — live ETA only valid for the current active trip. Upcoming rows always use `d.arrive` (scheduled).
+- **`vesselList` always defaults to `[]`** on API failure — never undefined.
+- **`getReturnDeparture()`** temporarily swaps global `direction` — must remain atomic.
+- **Leaflet container** must be visible before `L.map()` init.
+- **`lvApproaching`**: vessel on return leg → show sailing/arriving, not at-dock. Track position, ferry rotation, and column labels all have separate `lvApproaching` branches.
+- **Track fill vs pin**: at-dock → fill = 0%, pin = 3%/97%. Sailing → fill = pin = barPct.
+- **`cdTarget`** drives both the pill and `updateProgress()`. It's set in `renderSchedule()` and read by the interval callbacks as a closure variable.
+- **Upcoming slice**: `upcoming.slice(0, 3)` — do NOT use `slice(1, 4)`; the featured departure is also the first upcoming row.
 
 ---
 
 ## Known issues
 
-- **Figma MCP in cloud**: Does not work — network blocked. Use the git-trigger workflow above (it's fully automatic).
-- **CORS on `file://`**: Live API data won't load opening ferry.html directly from disk. Use `npx serve .` locally.
-- **Mobile cache**: iOS Safari aggressively caches. Hard-clear or append `?bust=N` after deploy.
-- **WSDOT API key**: Demo key is public/shared; may rate-limit under high traffic. Register at wsdot.wa.gov if needed.
+- **Figma MCP in cloud**: Network blocked. Use the git-trigger workflow — it's fully automatic.
+- **Branch forced in cloud sessions**: code.claude.com assigns a feature branch. Workaround: push to `main` directly via `mcp__github__create_or_update_file`.
+- **CORS on `file://`**: Live API data won't load from disk. Use `npx serve .` locally.
+- **Mobile cache**: iOS Safari aggressively caches. Hard-clear or `?bust=N` after deploy.
