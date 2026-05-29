@@ -1126,7 +1126,7 @@ svg.leaflet-image-layer.leaflet-interactive path {
 'use strict';
 
 // ── Build version — bump this string on every deploy ─────
-const BUILD = 'r56';
+const BUILD = 'r57';
 
 // ── Config ───────────────────────────────────────────────
 const API_KEY   = 'ff39cd9c-729e-40ac-b740-1cebec6226f9';
@@ -1739,7 +1739,7 @@ function renderSchedule() {
               <span class="nc-track-lbl">SEA</span>
             </div>
             <div class="nc-track-line">
-              <div class="nc-track-fill" id="ncTrackFill" style="width:${barPct.toFixed(1)}%"></div>
+              <div class="nc-track-fill" id="ncTrackFill" style="width:${atDock ? 0 : barPct.toFixed(1)}%"></div>
             </div>
             <div class="nc-track-ep">
               <div class="nc-track-dot"></div>
@@ -1865,7 +1865,7 @@ function renderVesselStrip() {
       const sub = v.AtDock
         ? `Docked · ${v.DepartingTerminalAbbrev || ''}`
         : (eta ? `ETA ${fmtTime(eta)}` : `${Math.round(v.Speed || 0)} kts`);
-      const vcolor = v.AtDock ? '#ffc947' : getVesselColor(v.VesselName);
+      const vcolor = getVesselColor(v.VesselName);
       return `<div class="vessel-chip" data-vid="${v.VesselID}" style="border-color:${vcolor}22">
         <span class="chip-dot" style="background:${vcolor}"></span>
         <span class="chip-name" style="color:${vcolor}">${v.VesselName}</span>
@@ -1916,11 +1916,12 @@ function initMap() {
 }
 
 function vesselMarkerIcon(heading, atDock, vesselName) {
-  const color = atDock ? '#ffc947' : getVesselColor(vesselName);
+  const color = getVesselColor(vesselName);
+  const opacity = atDock ? '55' : '8c';  // dimmer glow when docked
   return L.divIcon({
     html: `<div style="width:36px;height:36px;display:flex;align-items:center;justify-content:center;color:${color}">
       <svg width="28" height="28" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"
-           style="transform:rotate(${heading||0}deg);filter:drop-shadow(0 0 6px ${color}8c) drop-shadow(0 0 14px ${color}47);overflow:visible">
+           style="transform:rotate(${heading||0}deg);filter:drop-shadow(0 0 6px ${color}${opacity}) drop-shadow(0 0 14px ${color}47);overflow:visible">
         <path fill="currentColor" d="M32 5 C 40 13, 44 21, 44 29 L 44 54 C 44 57, 42 59, 39 59 L 25 59 C 22 59, 20 57, 20 54 L 20 29 C 20 21, 24 13, 32 5 Z"/>
         <path fill="#0b1a2e" fill-opacity="0.32" d="M32 13 C 37.5 19, 40 25, 40 30 L 40 51 C 40 53, 38.5 54.5, 36.5 54.5 L 27.5 54.5 C 25.5 54.5, 24 53, 24 51 L 24 30 C 24 25, 26.5 19, 32 13 Z"/>
         <circle cx="32" cy="24" r="3.4" fill="#0b1a2e"/>
