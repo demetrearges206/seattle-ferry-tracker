@@ -1132,7 +1132,7 @@ svg.leaflet-image-layer.leaflet-interactive path {
 'use strict';
 
 // ── Build version — bump this string on every deploy ─────
-const BUILD = 'r53';
+const BUILD = 'r54';
 
 // ── Config ───────────────────────────────────────────────
 const API_KEY   = 'ff39cd9c-729e-40ac-b740-1cebec6226f9';
@@ -1653,12 +1653,17 @@ function renderSchedule() {
   let seaLabel, seaTime, seaPrimary;
   let biLabel, biTime, biPrimary;
   if (direction === 'SEA-BI') {
-    seaLabel   = atDock ? 'DEPARTS SEA' : 'DEPARTED SEA';
-    seaTime    = atDock ? next.depart : actualDepart;
-    seaPrimary = atDock;
-    biLabel    = isArriving ? 'ARRIVED BI' : 'ARRIVES BI';
-    biTime     = arriveTime;
-    biPrimary  = !atDock;
+    if (atDock) {
+      seaLabel = 'DEPARTS SEA'; seaTime = next.depart; seaPrimary = true;
+      biLabel  = 'ARRIVES BI';  biTime  = next.arrive; biPrimary  = false;
+    } else if (lvApproaching) {
+      // Vessel sailing BI→SEA, approaching SEA for upcoming SEA→BI departure
+      biLabel  = 'DEPARTED BI'; biTime  = actualDepart || next.depart; biPrimary  = false;
+      seaLabel = isArriving ? 'ARRIVED SEA' : 'ARRIVES SEA'; seaTime = approachEta; seaPrimary = true;
+    } else {
+      seaLabel = 'DEPARTED SEA'; seaTime = actualDepart; seaPrimary = false;
+      biLabel  = isArriving ? 'ARRIVED BI' : 'ARRIVES BI'; biTime = arriveTime; biPrimary = true;
+    }
   } else {
     if (atDock) {
       biLabel = 'DEPARTS BI'; biTime = next.depart; biPrimary = true;
