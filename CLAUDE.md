@@ -90,6 +90,13 @@ The WSDOT API (`www.wsdot.wa.gov`) is also blocked from cloud sessions. Use the 
 
 **Do not attempt to call `www.wsdot.wa.gov` directly from a cloud session — it will always fail.**
 
+**Troubleshooting if the bot doesn't commit back:**
+- Check the Actions tab at `github.com/demetrearges206/seattle-ferry-tracker/actions`
+- Ensure Actions are enabled: Settings → Actions → General → Allow all actions
+- Ensure the workflow has write permission: Settings → Actions → General → Workflow permissions → Read and write
+
+**Maximum wait time:** If the bot hasn't committed within ~60 seconds of the push, something failed — check the Actions tab rather than polling indefinitely.
+
 ---
 
 ## WSDOT API endpoints
@@ -135,6 +142,44 @@ const TERMINALS = {
 ```
 
 **Date parsing:** All WSDOT dates are `/Date(milliseconds-offset)/` strings — use `parseWSDot(str)`.
+
+---
+
+## WSF vessel fleet
+
+The `vessellocations` endpoint returns all vessels system-wide. **No explicit status string is returned** — status is derived from `AtDock`, `InService`, and `Eta`.
+
+### Vessels assigned to Seattle–Bainbridge route
+| Vessel | Class | Notes |
+|--------|-------|-------|
+| Wenatchee | Jumbo Mark II | Primary |
+| Tacoma | Jumbo Mark II | Primary |
+| Puyallup | Jumbo Mark II | Relief / backup |
+| Chimacum | Olympic class | Smaller, occasional |
+| Suquamish | Olympic class | Smaller, occasional |
+
+### Full active WSF fleet (all routes)
+Cathlamet, Chelan, Chetzemoka, Chimacum, Hyak, Issaquah, Kaleetan, Kennewick, Kitsap, Kittitas, Klahowya, Puyallup, Samish, Sealth, Spokane, Suquamish, Tacoma, Tillikum, Tokitae, Walla Walla, Wenatchee
+
+### Derived vessel statuses (how the app uses API fields)
+
+| `InService` | `AtDock` | App card state | Badge shown |
+|-------------|----------|---------------|-------------|
+| `false` | any | Filtered out — not shown | — |
+| `true` | `true` | `at-dock` | **At Dock** |
+| `true` | `false` | `sailing` or `arriving` | **Sailing** / **Arriving** |
+
+`arriving` triggers when `minsTo(lv.Eta) <= 5` (or `minsTo(approachEta) <= 5` for `lvApproaching`).
+
+### Countdown pill text (from `countdownInfo()`)
+
+| Condition (`minsTo(cdTarget)`) | Pill text | Color |
+|-------------------------------|-----------|-------|
+| ≥ 60 min | `"Xh Xm"` | neutral |
+| 10–59 min | `"Xm"` | neutral |
+| 0–9 min | `"Xm"` | red |
+| −5 to 0 | `"Leaving"` | red |
+| < −5 | `"Departed"` | muted |
 
 ---
 
