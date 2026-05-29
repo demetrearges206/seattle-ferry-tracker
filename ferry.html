@@ -706,6 +706,13 @@ svg.leaflet-image-layer.leaflet-interactive path {
       --dim:        #3a5070;
       --border:     rgba(255,255,255,0.07);
       --radius:     14px;
+      --st-sailing:   #58d8ae;
+      --st-arriving:  #eec05b;
+      --st-atdock:    #71bfff;
+      --st-delayed:   #f08f47;
+      --st-departed:  #8294a7;
+      --st-oos:       #6c7680;
+      --st-cancelled: #e9504d;
     }
 
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -824,17 +831,9 @@ svg.leaflet-image-layer.leaflet-interactive path {
     .next-card {
       margin: 16px 16px 0; border-radius: 14px;
       background: #0e2040; border: 1px solid rgba(255,255,255,0.07);
-      padding: 18px 20px 16px; position: relative; overflow: hidden;
+      padding: 18px 20px 16px; position: relative;
       display: flex; flex-direction: column; gap: 5px;
     }
-    /* Progress bar — top edge, width driven by --bar-w (0–1) */
-    .next-card::after {
-      content: ''; position: absolute; top: 0; left: 0;
-      height: 6px; width: calc(var(--bar-w, 0) * 100%);
-      background: linear-gradient(90deg, #2196f3, var(--teal));
-      transition: width 20s linear;
-    }
-    .next-card[data-state="at-dock"]::after { background: #2196f3; width: 100%; }
     /* Header */
     .nc-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
     .nc-vessel { display: flex; align-items: center; gap: 8px; min-width: 0; }
@@ -845,12 +844,14 @@ svg.leaflet-image-layer.leaflet-interactive path {
     }
     /* Status badge */
     .nc-badge {
-      font-size: 10px; font-weight: 700; line-height: 12px; padding: 4px 8px;
-      border-radius: 8px; white-space: nowrap; flex-shrink: 0;
+      display: inline-flex; align-items: center; gap: 6px;
+      font-size: 11px; font-weight: 700; line-height: 13px; padding: 5px 10px;
+      border-radius: 4px; letter-spacing: .2px; white-space: nowrap; flex-shrink: 0;
     }
-    .nc-badge-dock     { background: rgba(33,150,243,0.12);  color: #2196f3; }
-    .nc-badge-sailing  { background: rgba(0,201,167,0.12);   color: #00c9a7; }
-    .nc-badge-arriving { background: rgba(254,84,73,0.12);   color: #fe5449; }
+    .nc-badge .dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+    .nc-badge--atdock   { color: var(--st-atdock);   background: color-mix(in oklab, var(--st-atdock)   15%, transparent); }
+    .nc-badge--sailing  { color: var(--st-sailing);  background: color-mix(in oklab, var(--st-sailing)  16%, transparent); }
+    .nc-badge--arriving { color: var(--st-arriving); background: color-mix(in oklab, var(--st-arriving) 16%, transparent); }
     /* Countdown pill */
     .nc-pill {
       font-size: 10px; font-weight: 700; line-height: 17px; padding: 5px 10px;
@@ -889,6 +890,44 @@ svg.leaflet-image-layer.leaflet-interactive path {
       font-size: 10px; font-weight: 500; letter-spacing: 0.3px; color: var(--mid);
       padding-top: 12px; border-top: 1px solid rgba(255,255,255,0.07); margin-top: 1px;
     }
+
+    /* ── Track row ───────────────────────────────────────────── */
+    .nc-track-row { padding: 12px 0 2px; }
+    .nc-track-endpoints { display: flex; align-items: center; gap: 8px; }
+    .nc-track-ep-wrap { display: flex; flex-direction: column; align-items: center; gap: 5px; }
+    .nc-track-label { font-size: 10px; color: var(--mid); letter-spacing: .5px; font-weight: 600; }
+    .nc-track-line { position: relative; flex: 1; height: 3px; background: var(--dim); border-radius: 2px; }
+    .nc-track-fill { position: absolute; left: 0; top: 0; height: 100%; border-radius: 2px; background: var(--vc); width: 0; }
+    /* Endpoint dots */
+    .ep-dot { position: relative; width: 14px; height: 14px; display: flex; align-items: center; justify-content: center; }
+    .ep-core { width: 14px; height: 14px; border-radius: 50%; background: transparent; border: 2px solid var(--dim); box-sizing: border-box; }
+    .ep-ring { position: absolute; top: 50%; left: 50%; width: 14px; height: 14px; border-radius: 50%;
+      border: 2px solid var(--vc); transform: translate(-50%,-50%); opacity: 0; pointer-events: none; }
+    .ep-dot--hollow .ep-core { border-color: var(--dim); }
+    .ep-dot--plain  .ep-core { width: 9px; height: 9px; border: none; background: var(--vc); opacity: .9; }
+    .ep-dot--target .ep-core { border: none; background: var(--vc); box-shadow: 0 0 9px color-mix(in oklab, var(--vc) 55%, transparent); }
+    .ep-dot--vring  .ep-core { border: 2px solid var(--vc); background: transparent; box-shadow: 0 0 7px color-mix(in oklab, var(--vc) 40%, transparent); }
+    .ep-dot--docked .ep-core { border: none; background: var(--vc); box-shadow: 0 0 10px color-mix(in oklab, var(--vc) 60%, transparent); }
+    .ep-dot--docked .ep-ring { animation: ncDockPulse 2.4s ease-out infinite; }
+    @keyframes ncDockPulse {
+      0%   { transform: translate(-50%,-50%) scale(1);    opacity: .6; }
+      70%  { transform: translate(-50%,-50%) scale(2.05); opacity: 0; }
+      100% { transform: translate(-50%,-50%) scale(2.05); opacity: 0; }
+    }
+    /* Vessel pin */
+    .nc-vessel-pin { position: absolute; top: 1.5px; transform: translateX(-50%);
+      display: flex; flex-direction: column; align-items: center; z-index: 4; }
+    .nc-pin-icon {
+      width: 24px; height: 24px; display: flex; align-items: center; justify-content: center;
+      margin-top: -12px;
+      color: var(--vc);
+      filter:
+        drop-shadow(0 0 6px  color-mix(in srgb, currentColor 55%, transparent))
+        drop-shadow(0 0 14px color-mix(in srgb, currentColor 28%, transparent));
+    }
+    .nc-pin-icon svg { display: block; overflow: visible; transform: rotate(90deg); }
+    .nc-pin-time { font-size: 9.5px; font-weight: 700; color: #fff; background: rgba(8,18,38,.85);
+      padding: 2px 6px; border-radius: 5px; white-space: nowrap; margin-top: 2px; border: 1px solid var(--border); }
 
     /* ── Section label ───────────────────────────────────────── */
     .section-label {
@@ -1108,7 +1147,7 @@ svg.leaflet-image-layer.leaflet-interactive path {
 'use strict';
 
 // ── Build version — bump this string on every deploy ─────
-const BUILD = 'r50';
+const BUILD = 'r51';
 
 // ── Config ───────────────────────────────────────────────
 const API_KEY   = 'ff39cd9c-729e-40ac-b740-1cebec6226f9';
@@ -1455,13 +1494,20 @@ function getScheduleNotes() {
 }
 
 // ── Per-vessel color ─────────────────────────────────────
-// 8 perceptually distinct hues, roughly 45° apart, calibrated for dark backgrounds
-const VESSEL_PALETTE = ['#00c9a7','#ffc947','#f472b6','#60a5fa','#fb923c','#a3e635','#c084fc','#f87171'];
+const VESSEL_COLORS = {
+  Tacoma:'#e2b93a', Wenatchee:'#73e087',
+  Cathlamet:'#ff94ac', Chelan:'#ff978b', Chetzemoka:'#ff9e6a', Chimacum:'#fda84d',
+  Issaquah:'#eab43b', Kaleetan:'#d0c141', Kennewick:'#afcc59', Kitsap:'#88d479',
+  Kittitas:'#5ada9c', Puyallup:'#13dbbe', Salish:'#00d9de', Samish:'#00d4f9',
+  Sealth:'#49cbff', Spokane:'#79c1ff', Suquamish:'#9fb6ff', Tillikum:'#c0abff',
+  Tokitae:'#dba2ff', 'Walla Walla':'#f29aea', Yakima:'#ff95cd',
+};
+const VESSEL_RAMP = ['#ff94ac','#ff9e6a','#eab43b','#afcc59','#5ada9c','#13dbbe',
+                     '#00d4f9','#49cbff','#9fb6ff','#c0abff','#dba2ff','#f29aea'];
 function getVesselColor(name) {
-  if (!name) return VESSEL_PALETTE[0];
-  let h = 0;
-  for (const c of name) h = (h * 31 + c.charCodeAt(0)) >>> 0;
-  return VESSEL_PALETTE[h % VESSEL_PALETTE.length];
+  if (VESSEL_COLORS[name]) return VESSEL_COLORS[name];
+  let h = 0; for (const c of name || '') h = (h * 31 + c.charCodeAt(0)) >>> 0;
+  return VESSEL_RAMP[h % VESSEL_RAMP.length];
 }
 
 // ── Mini-map inside Next Sailing card ────────────────────
@@ -1616,7 +1662,14 @@ function renderSchedule() {
     ? `Next: Departs ${destLabel} · ${fmtTime(returnDep.depart)}`
     : null;
 
-  const badgeCls = { 'at-dock': 'nc-badge-dock', 'sailing': 'nc-badge-sailing', 'arriving': 'nc-badge-arriving' }[cardState] || '';
+  const isSeaBI   = direction === 'SEA-BI';
+  const seaDotCls = cardState === 'at-dock'
+    ? (isSeaBI ? 'ep-dot--docked' : 'ep-dot--hollow')
+    : (isSeaBI ? 'ep-dot--hollow' : 'ep-dot--vring');
+  const biDotCls  = cardState === 'at-dock'
+    ? (isSeaBI ? 'ep-dot--hollow' : 'ep-dot--docked')
+    : (isSeaBI ? 'ep-dot--vring'  : 'ep-dot--hollow');
+  const badgeCls = { 'at-dock': 'nc-badge--atdock', 'sailing': 'nc-badge--sailing', 'arriving': 'nc-badge--arriving' }[cardState] || '';
   const pillCls  = { 'at-dock': 'nc-pill-dock',  'sailing': 'nc-pill-sailing',  'arriving': 'nc-pill-arriving'  }[cardState] || '';
   const badgeText= { 'at-dock': 'At Dock',        'sailing': 'Sailing',           'arriving': 'Arriving'          }[cardState] || '';
   const cd = (cardState !== 'fallback') ? countdownInfo(cdTarget) : { text: '', cls: '' };
@@ -1627,12 +1680,12 @@ function renderSchedule() {
     featWrap.innerHTML = '';
   } else {
     featWrap.innerHTML = `
-      <div class="next-card" id="nextCard" data-state="${cardState}" style="--bar-w:0">
+      <div class="next-card" id="nextCard" data-state="${cardState}">
         <div class="nc-header">
           <div class="nc-vessel">
             <span class="nc-vessel-icon">⛴</span>
             <span class="nc-vessel-name" style="color:${getVesselColor(next.vessel)}">${next.vessel || 'Vessel TBD'}</span>
-            <span class="nc-badge ${badgeCls}">${badgeText}</span>
+            <span class="nc-badge ${badgeCls}"><span class="dot"></span>${badgeText}</span>
           </div>
           <div class="nc-pill ${pillCls}" id="cdPill">${cd.text}</div>
         </div>
@@ -1649,6 +1702,31 @@ function renderSchedule() {
           </div>
         </div>
         ${footerText ? `<div class="nc-footer">${footerText}</div>` : ''}
+        <div class="nc-track-row" style="--vc:${getVesselColor(next.vessel)}">
+          <div class="nc-track-endpoints">
+            <div class="nc-track-ep-wrap">
+              <div class="ep-dot ${seaDotCls}"><div class="ep-core"></div><div class="ep-ring"></div></div>
+              <span class="nc-track-label">SEA</span>
+            </div>
+            <div class="nc-track-line">
+              <div class="nc-track-fill" id="trackFill"></div>
+              <div class="nc-vessel-pin" id="vesselPin" style="${atDock ? 'display:none' : 'left:' + (isSeaBI ? '3' : '97') + '%'}">
+                <div class="nc-pin-icon">
+                  <svg viewBox="0 0 64 64" width="22" height="22">
+                    <path fill="currentColor" d="M32 5 C40 13,44 21,44 29 L44 54 C44 57,42 59,39 59 L25 59 C22 59,20 57,20 54 L20 29 C20 21,24 13,32 5 Z"/>
+                    <path fill="#0b1a2e" fill-opacity=".32" d="M32 13 C37.5 19,40 25,40 30 L40 51 C40 53,38.5 54.5,36.5 54.5 L27.5 54.5 C25.5 54.5,24 53,24 51 L24 30 C24 25,26.5 19,32 13 Z"/>
+                    <circle cx="32" cy="24" r="3.4" fill="#0b1a2e"/>
+                  </svg>
+                </div>
+                <div class="nc-pin-time" id="pinTime">${arriveTime ? fmtTime(arriveTime) : ''}</div>
+              </div>
+            </div>
+            <div class="nc-track-ep-wrap">
+              <div class="ep-dot ${biDotCls}"><div class="ep-core"></div><div class="ep-ring"></div></div>
+              <span class="nc-track-label">BI</span>
+            </div>
+          </div>
+        </div>
       </div>`;
   }
 
@@ -1709,14 +1787,26 @@ function renderSchedule() {
     document.getElementById('schedChevron').classList.toggle('open', schedOpen);
   });
 
-  const nextCardEl = document.getElementById('nextCard');
   function updateProgress() {
-    if (!nextCardEl || cardState === 'fallback' || cardState === 'at-dock') return;
+    const pinEl  = document.getElementById('vesselPin');
+    const fillEl = document.getElementById('trackFill');
+    if (!pinEl || !fillEl) return;
+    if (cardState === 'fallback' || cardState === 'at-dock') { pinEl.style.display = 'none'; return; }
     const left = lv ? parseWSDot(lv.LeftDock) : null;
     const eta  = liveEta || next.arrive;
-    if (!left || !eta) return;
-    const prog = Math.max(0, Math.min(1, (Date.now() - left) / (eta - left)));
-    nextCardEl.style.setProperty('--bar-w', prog.toFixed(3));
+    if (!left || !eta) { pinEl.style.display = 'none'; return; }
+    const prog   = Math.max(0, Math.min(1, (Date.now() - left) / (eta - left)));
+    const seaBI  = direction === 'SEA-BI';
+    const pinPct = seaBI ? (3 + 94 * prog) : (97 - 94 * prog);
+    pinEl.style.left    = pinPct.toFixed(1) + '%';
+    pinEl.style.display = '';
+    if (seaBI) {
+      fillEl.style.left  = '0';
+      fillEl.style.width = pinPct.toFixed(1) + '%';
+    } else {
+      fillEl.style.left  = pinPct.toFixed(1) + '%';
+      fillEl.style.width = (100 - pinPct).toFixed(1) + '%';
+    }
   }
   updateProgress();
 
