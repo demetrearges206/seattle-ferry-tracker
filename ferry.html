@@ -845,13 +845,16 @@ svg.leaflet-image-layer.leaflet-interactive path {
     /* Status badge */
     .nc-badge {
       display: inline-flex; align-items: center; gap: 6px;
-      font-size: 11px; font-weight: 700; line-height: 13px; padding: 5px 10px;
-      border-radius: 4px; letter-spacing: .2px; white-space: nowrap; flex-shrink: 0;
+      font-size: 11px; font-weight: 700; line-height: 13px;
+      padding: 5px 10px; border-radius: 4px; letter-spacing: .2px; white-space: nowrap;
     }
-    .nc-badge .dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
-    .nc-badge--atdock   { color: var(--st-atdock);   background: color-mix(in oklab, var(--st-atdock)   15%, transparent); }
     .nc-badge--sailing  { color: var(--st-sailing);  background: color-mix(in oklab, var(--st-sailing)  16%, transparent); }
     .nc-badge--arriving { color: var(--st-arriving); background: color-mix(in oklab, var(--st-arriving) 16%, transparent); }
+    .nc-badge--atdock   { color: var(--st-atdock);   background: color-mix(in oklab, var(--st-atdock)   15%, transparent); }
+    .nc-badge--delayed  { color: var(--st-delayed);  background: color-mix(in oklab, var(--st-delayed)  16%, transparent); }
+    .nc-badge--departed { color: var(--st-departed); background: color-mix(in oklab, var(--st-departed) 18%, transparent); }
+    .nc-badge--oos      { color: var(--st-oos);      background: color-mix(in oklab, var(--st-oos)      22%, transparent); }
+    .nc-badge--cancelled{ color: var(--st-cancelled);background: color-mix(in oklab, var(--st-cancelled) 16%, transparent); }
     /* Countdown pill — amber text for all states; bg varies */
     .nc-pill {
       font-size: 11px; font-weight: 700; line-height: 17px; padding: 5px 14px;
@@ -1144,7 +1147,7 @@ svg.leaflet-image-layer.leaflet-interactive path {
 'use strict';
 
 // ── Build version — bump this string on every deploy ─────
-const BUILD = 'r58';
+const BUILD = 'r59';
 
 // ── Config ───────────────────────────────────────────────
 const API_KEY   = 'ff39cd9c-729e-40ac-b740-1cebec6226f9';
@@ -1747,7 +1750,7 @@ function renderSchedule() {
           <div class="nc-vessel">
             <span class="nc-vessel-icon">⛴</span>
             <span class="nc-vessel-name" style="color:${vesselClr}">${next.vessel || 'Vessel TBD'}</span>
-            <span class="nc-badge ${badgeCls}"><span class="dot"></span>${badgeText}</span>
+            <span class="nc-badge ${badgeCls}">${badgeText}</span>
           </div>
           <div class="nc-pill ${pillCls}" id="cdPill">${cd.text}</div>
         </div>
