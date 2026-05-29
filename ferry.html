@@ -831,7 +831,7 @@ svg.leaflet-image-layer.leaflet-interactive path {
     .next-card {
       margin: 16px 16px 0; border-radius: 14px;
       background: #0e2040; border: 1px solid rgba(255,255,255,0.07);
-      padding: 18px 20px 16px; position: relative;
+      padding: 18px 20px 16px;
       display: flex; flex-direction: column; gap: 5px;
     }
     /* Header */
@@ -852,51 +852,37 @@ svg.leaflet-image-layer.leaflet-interactive path {
     .nc-badge--atdock   { color: var(--st-atdock);   background: color-mix(in oklab, var(--st-atdock)   15%, transparent); }
     .nc-badge--sailing  { color: var(--st-sailing);  background: color-mix(in oklab, var(--st-sailing)  16%, transparent); }
     .nc-badge--arriving { color: var(--st-arriving); background: color-mix(in oklab, var(--st-arriving) 16%, transparent); }
-    /* Countdown pill */
+    /* Countdown pill — amber text for all states; bg varies */
     .nc-pill {
-      font-size: 10px; font-weight: 700; line-height: 17px; padding: 5px 10px;
+      font-size: 11px; font-weight: 700; line-height: 17px; padding: 5px 14px;
       border-radius: 20px; white-space: nowrap; flex-shrink: 0; text-align: center;
+      color: #ffc947;
     }
-    .nc-pill-dock     { background: rgba(255,201,71,0.18);   color: #ffc947; }
-    .nc-pill-sailing  { background: rgba(128,153,192,0.18);  color: #8099c0; }
-    .nc-pill-arriving { background: rgba(254,84,73,0.18);    color: #fe5449; }
-    /* Time block */
-    .nc-times {
-      display: flex; align-items: flex-end; justify-content: space-between;
-      padding-bottom: 4px;
-    }
-    .nc-primary-label, .nc-secondary-label {
+    .nc-pill-dock     { background: rgba(255,255,255,0.10); }
+    .nc-pill-sailing  { background: rgba(255,201,71,0.18);  }
+    .nc-pill-arriving { background: rgba(255,201,71,0.18);  }
+    /* Time block — SEA always left, BI always right */
+    .nc-times { display: flex; align-items: flex-end; justify-content: space-between; padding-bottom: 4px; }
+    .nc-col-label {
       font-size: 9px; font-weight: 700; letter-spacing: 1.8px; line-height: 11px;
       text-transform: uppercase; margin-bottom: 6px;
     }
-    .nc-primary-label   { color: #fff; }
-    .nc-secondary-label { color: var(--mid); }
-    .nc-primary-time { display: flex; align-items: flex-end; gap: 1px; line-height: 1; }
-    .nc-time-big  { font-size: 42px; font-weight: 700; line-height: 1; color: #fff; }
-    .nc-time-ampm { font-size: 17px; font-weight: 700; color: #fff; line-height: 1.3; }
-    .nc-secondary { text-align: right; padding-bottom: 5px; }
-    .nc-secondary-time { font-size: 24px; font-weight: 700; color: var(--mid); line-height: 1; }
-    /* Sailing/arriving: big arrival time moves to RIGHT, small departed time moves to LEFT */
-    .next-card[data-state="sailing"] .nc-primary,
-    .next-card[data-state="arriving"] .nc-primary {
-      order: 2;
-    }
-    .next-card[data-state="sailing"] .nc-secondary,
-    .next-card[data-state="arriving"] .nc-secondary {
-      order: 1; text-align: left;
-    }
-    /* Footer / fallback message */
-    .nc-footer, .nc-fallback-msg {
-      font-size: 10px; font-weight: 500; letter-spacing: 0.3px; color: var(--mid);
-      padding-top: 12px; border-top: 1px solid rgba(255,255,255,0.07); margin-top: 1px;
-    }
-
-    /* ── Track row ───────────────────────────────────────────── */
-    .nc-track-row { padding: 12px 0 2px; }
-    .nc-track-endpoints { display: flex; align-items: center; gap: 8px; }
+    .nc-col-time { display: flex; align-items: flex-end; gap: 1px; line-height: 1; }
+    .nc-col-primary .nc-col-label { color: #fff; }
+    .nc-col-primary .nc-t-big    { font-size: 42px; font-weight: 700; line-height: 1; color: #fff; }
+    .nc-col-primary .nc-t-ampm   { font-size: 17px; font-weight: 700; color: #fff; line-height: 1.3; }
+    .nc-col-secondary .nc-col-label { color: var(--mid); }
+    .nc-col-secondary .nc-t-big    { font-size: 24px; font-weight: 700; color: var(--mid); line-height: 1; }
+    .nc-col-secondary .nc-t-ampm   { font-size: 24px; font-weight: 700; color: var(--mid); line-height: 1; }
+    /* Route progress track */
+    .nc-route-wrap { padding-top: 10px; }
+    .nc-track-row { display: flex; align-items: center; gap: 8px; }
     .nc-track-ep-wrap { display: flex; flex-direction: column; align-items: center; gap: 5px; }
     .nc-track-label { font-size: 10px; color: var(--mid); letter-spacing: .5px; font-weight: 600; }
-    .nc-track-line { position: relative; flex: 1; height: 3px; background: var(--dim); border-radius: 2px; }
+    .nc-track-line {
+      flex: 1; height: 3px; background: var(--dim);
+      position: relative; border-radius: 2px;
+    }
     .nc-track-fill { position: absolute; left: 0; top: 0; height: 100%; border-radius: 2px; background: var(--vc); width: 0; }
     /* Endpoint dots */
     .ep-dot { position: relative; width: 14px; height: 14px; display: flex; align-items: center; justify-content: center; }
@@ -904,8 +890,6 @@ svg.leaflet-image-layer.leaflet-interactive path {
     .ep-ring { position: absolute; top: 50%; left: 50%; width: 14px; height: 14px; border-radius: 50%;
       border: 2px solid var(--vc); transform: translate(-50%,-50%); opacity: 0; pointer-events: none; }
     .ep-dot--hollow .ep-core { border-color: var(--dim); }
-    .ep-dot--plain  .ep-core { width: 9px; height: 9px; border: none; background: var(--vc); opacity: .9; }
-    .ep-dot--target .ep-core { border: none; background: var(--vc); box-shadow: 0 0 9px color-mix(in oklab, var(--vc) 55%, transparent); }
     .ep-dot--vring  .ep-core { border: 2px solid var(--vc); background: transparent; box-shadow: 0 0 7px color-mix(in oklab, var(--vc) 40%, transparent); }
     .ep-dot--docked .ep-core { border: none; background: var(--vc); box-shadow: 0 0 10px color-mix(in oklab, var(--vc) 60%, transparent); }
     .ep-dot--docked .ep-ring { animation: ncDockPulse 2.4s ease-out infinite; }
@@ -914,20 +898,33 @@ svg.leaflet-image-layer.leaflet-interactive path {
       70%  { transform: translate(-50%,-50%) scale(2.05); opacity: 0; }
       100% { transform: translate(-50%,-50%) scale(2.05); opacity: 0; }
     }
-    /* Vessel pin */
-    .nc-vessel-pin { position: absolute; top: 1.5px; transform: translateX(-50%);
-      display: flex; flex-direction: column; align-items: center; z-index: 4; }
+    .nc-vessel-pin {
+      position: absolute; top: 1.5px; transform: translateX(-50%);
+      display: flex; flex-direction: column; align-items: center; z-index: 4;
+    }
     .nc-pin-icon {
-      width: 24px; height: 24px; display: flex; align-items: center; justify-content: center;
-      margin-top: -12px;
+      width: 24px; height: 24px; display: flex; align-items: center;
+      justify-content: center; margin-top: -12px;
       color: var(--vc);
       filter:
         drop-shadow(0 0 6px  color-mix(in srgb, currentColor 55%, transparent))
         drop-shadow(0 0 14px color-mix(in srgb, currentColor 28%, transparent));
     }
-    .nc-pin-icon svg { display: block; overflow: visible; transform: rotate(90deg); }
-    .nc-pin-time { font-size: 9.5px; font-weight: 700; color: #fff; background: rgba(8,18,38,.85);
-      padding: 2px 6px; border-radius: 5px; white-space: nowrap; margin-top: 2px; border: 1px solid var(--border); }
+    .nc-pin-icon svg { display: block; overflow: visible; }
+    .nc-pin-time {
+      font-size: 9.5px; font-weight: 700; color: #fff;
+      background: rgba(8,18,38,.85); padding: 2px 6px; border-radius: 5px;
+      white-space: nowrap; margin-top: 2px; border: 1px solid var(--border);
+    }
+    /* Next departure line */
+    .nc-next-line {
+      font-size: 10px; font-weight: 500; letter-spacing: 0.3px; color: var(--mid);
+      padding-top: 12px; border-top: 1px solid rgba(255,255,255,0.07); margin-top: 8px;
+    }
+    .nc-fallback-msg {
+      font-size: 10px; font-weight: 500; letter-spacing: 0.3px; color: var(--mid);
+      padding-top: 12px; border-top: 1px solid rgba(255,255,255,0.07); margin-top: 1px;
+    }
 
     /* ── Section label ───────────────────────────────────────── */
     .section-label {
@@ -1147,7 +1144,7 @@ svg.leaflet-image-layer.leaflet-interactive path {
 'use strict';
 
 // ── Build version — bump this string on every deploy ─────
-const BUILD = 'r51';
+const BUILD = 'r58';
 
 // ── Config ───────────────────────────────────────────────
 const API_KEY   = 'ff39cd9c-729e-40ac-b740-1cebec6226f9';
@@ -1494,6 +1491,7 @@ function getScheduleNotes() {
 }
 
 // ── Per-vessel color ─────────────────────────────────────
+// 8 perceptually distinct hues, roughly 45° apart, calibrated for dark backgrounds
 const VESSEL_COLORS = {
   Tacoma:'#e2b93a', Wenatchee:'#73e087',
   Cathlamet:'#ff94ac', Chelan:'#ff978b', Chetzemoka:'#ff9e6a', Chimacum:'#fda84d',
@@ -1624,7 +1622,7 @@ function renderSchedule() {
   }
 
   const next = upcoming[0];
-  const rest = upcoming.slice(1, 4);
+  const rest = upcoming.slice(0, 3);
   const lv = getLiveVessel(next.vessel);
 
   // Only use live data if the vessel is heading toward the correct destination for this tab
@@ -1634,12 +1632,20 @@ function renderSchedule() {
     lv.DepartingTerminalID === dirDep && lv.ArrivingTerminalID === dirArr;
   const liveEta = lvOnRoute ? parseWSDot(lv.Eta) : null;
 
+  // Vessel sailing the opposite direction, heading toward our departure terminal
+  const lvApproaching = lv && !lv.AtDock && !lvOnRoute &&
+    lv.DepartingTerminalID === dirArr && lv.ArrivingTerminalID === dirDep;
+  const approachEta = lvApproaching ? parseWSDot(lv.Eta) : null;
+
   // ── Determine card state ───────────────────────────────
   let cardState;
   if (!lv) {
     cardState = 'fallback';
-  } else if (lv.AtDock || !lvOnRoute) {
-    // Vessel at dock, or sailing in opposite direction — show next scheduled departure
+  } else if (lv.AtDock) {
+    cardState = 'at-dock';
+  } else if (lvApproaching) {
+    cardState = minsTo(approachEta) <= 5 ? 'arriving' : 'sailing';
+  } else if (!lvOnRoute) {
     cardState = 'at-dock';
   } else if (liveEta && minsTo(liveEta) <= 5) {
     cardState = 'arriving';
@@ -1647,20 +1653,77 @@ function renderSchedule() {
     cardState = 'sailing';
   }
 
-  const originLabel = direction === 'SEA-BI' ? 'SEA' : 'BI';
-  const destLabel   = direction === 'SEA-BI' ? 'BI'  : 'SEA';
-  const atDock = cardState === 'at-dock';
-  const arriveTime   = liveEta || next.arrive;
-  const actualDepart = (!atDock && lvOnRoute && lv.LeftDock) ? parseWSDot(lv.LeftDock) : next.depart;
-  const bigTime     = atDock ? next.depart : arriveTime;
-  const smallTime   = atDock ? next.arrive : actualDepart;
-  const bigLabel    = atDock ? `DEPARTS ${originLabel}` : `ARRIVES ${destLabel}`;
-  const smallLabel  = atDock ? `ARRIVES ${destLabel}`   : `DEPARTED ${originLabel}`;
+  const atDock      = cardState === 'at-dock';
+  const isArriving  = cardState === 'arriving';
+  const arriveTime  = lvApproaching ? approachEta : (liveEta || next.arrive);
+  const actualDepart = lvApproaching
+    ? ((lv && lv.LeftDock) ? parseWSDot(lv.LeftDock) : null)
+    : ((!atDock && lvOnRoute && lv && lv.LeftDock) ? parseWSDot(lv.LeftDock) : next.depart);
   const cdTarget    = atDock ? next.depart : arriveTime;
-  const returnDep   = (cardState !== 'fallback') ? getReturnDeparture(arriveTime) : null;
-  const footerText  = returnDep
-    ? `Next: Departs ${destLabel} · ${fmtTime(returnDep.depart)}`
-    : null;
+  const destName    = direction === 'SEA-BI' ? 'Bainbridge' : 'Seattle';
+  const depTermName = direction === 'SEA-BI' ? 'Seattle' : 'Bainbridge';
+  const returnDep   = (!lvApproaching && cardState !== 'fallback') ? getReturnDeparture(arriveTime) : null;
+  const footerText  = lvApproaching
+    ? `Next: Departs ${depTermName} · ${fmtTime(next.depart)}`
+    : (returnDep ? `Next: Departs ${destName} · ${fmtTime(returnDep.depart)}` : null);
+
+  // ── SEA (left) and BI (right) column values ─────────────
+  // SEA is always on the left, BI always on the right.
+  // Primary = the "focus" terminal (where ferry is for at-dock; destination when underway).
+  let seaLabel, seaTime, seaPrimary;
+  let biLabel, biTime, biPrimary;
+  if (direction === 'SEA-BI') {
+    if (atDock) {
+      seaLabel = 'DEPARTS SEA'; seaTime = next.depart; seaPrimary = true;
+      biLabel  = 'ARRIVES BI';  biTime  = next.arrive; biPrimary  = false;
+    } else if (lvApproaching) {
+      // Vessel sailing BI→SEA, approaching SEA for upcoming SEA→BI departure
+      biLabel  = 'DEPARTED BI'; biTime  = actualDepart || next.depart; biPrimary  = false;
+      seaLabel = isArriving ? 'ARRIVED SEA' : 'ARRIVES SEA'; seaTime = approachEta; seaPrimary = true;
+    } else {
+      seaLabel = 'DEPARTED SEA'; seaTime = actualDepart; seaPrimary = false;
+      biLabel  = isArriving ? 'ARRIVED BI' : 'ARRIVES BI'; biTime = arriveTime; biPrimary = true;
+    }
+  } else {
+    if (atDock) {
+      biLabel = 'DEPARTS BI'; biTime = next.depart; biPrimary = true;
+      seaLabel = 'ARRIVES SEA'; seaTime = next.arrive; seaPrimary = false;
+    } else if (lvApproaching) {
+      seaLabel = 'DEPARTED SEA'; seaTime = actualDepart || next.depart; seaPrimary = false;
+      biLabel  = isArriving ? 'ARRIVED BI' : 'ARRIVES BI'; biTime = approachEta; biPrimary = true;
+    } else {
+      biLabel = 'DEPARTED BI'; biTime = actualDepart; biPrimary = false;
+      seaLabel = isArriving ? 'ARRIVED SEA' : 'ARRIVES SEA'; seaTime = arriveTime; seaPrimary = true;
+    }
+  }
+  const { t: seaT, ap: seaAp } = splitTime(seaTime);
+  const { t: biT,  ap: biAp  } = splitTime(biTime);
+
+  // ── Route progress bar (0–100 %, SEA=0, BI=100) ─────────
+  // Position = fraction of trip elapsed, derived from time remaining so it
+  // stays in sync with the live ETA pill even when LeftDock is unavailable.
+  const scheduledTripMs = next.arrive - next.depart;
+  const computeBarPct = () => {
+    if (atDock) return direction === 'SEA-BI' ? 3 : 97;
+    const totalTrip = (lvApproaching && actualDepart && approachEta)
+      ? approachEta - actualDepart
+      : scheduledTripMs;
+    if (totalTrip <= 0) return 50;
+    const remaining = cdTarget - Date.now();
+    const pct = Math.max(3, Math.min(97, (1 - remaining / totalTrip) * 100));
+    // lvApproaching: vessel travels in OPPOSITE direction, so invert the direction check
+    const isForward = lvApproaching ? direction === 'BI-SEA' : direction === 'SEA-BI';
+    return isForward ? pct : (100 - pct);
+  };
+  const barPct    = computeBarPct();
+  const ferryRot  = ((direction === 'SEA-BI') !== lvApproaching) ? 90 : -90;
+  const vesselClr = getVesselColor(next.vessel);
+  const ferryPinSvg = `<svg width="22" height="22" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"
+    style="transform:rotate(${ferryRot}deg);overflow:visible;display:block">
+    <path fill="currentColor" d="M32 5 C 40 13, 44 21, 44 29 L 44 54 C 44 57, 42 59, 39 59 L 25 59 C 22 59, 20 57, 20 54 L 20 29 C 20 21, 24 13, 32 5 Z"/>
+    <path fill="#0b1a2e" fill-opacity="0.32" d="M32 13 C 37.5 19, 40 25, 40 30 L 40 51 C 40 53, 38.5 54.5, 36.5 54.5 L 27.5 54.5 C 25.5 54.5, 24 53, 24 51 L 24 30 C 24 25, 26.5 19, 32 13 Z"/>
+    <circle cx="32" cy="24" r="3.4" fill="#0b1a2e"/>
+  </svg>`;
 
   const isSeaBI   = direction === 'SEA-BI';
   const seaDotCls = cardState === 'at-dock'
@@ -1671,9 +1734,8 @@ function renderSchedule() {
     : (isSeaBI ? 'ep-dot--vring'  : 'ep-dot--hollow');
   const badgeCls = { 'at-dock': 'nc-badge--atdock', 'sailing': 'nc-badge--sailing', 'arriving': 'nc-badge--arriving' }[cardState] || '';
   const pillCls  = { 'at-dock': 'nc-pill-dock',  'sailing': 'nc-pill-sailing',  'arriving': 'nc-pill-arriving'  }[cardState] || '';
-  const badgeText= { 'at-dock': 'At Dock',        'sailing': 'Sailing',           'arriving': 'Arriving'          }[cardState] || '';
+  const badgeText= { 'at-dock': 'At Dock',        'sailing': 'Sailing',          'arriving': 'Arriving'          }[cardState] || '';
   const cd = (cardState !== 'fallback') ? countdownInfo(cdTarget) : { text: '', cls: '' };
-  const { t: bigT, ap: bigAp } = (cardState !== 'fallback') ? splitTime(bigTime) : { t: '', ap: '' };
 
   // ── Featured card (renders into #schedFeatured) ────────
   if (cardState === 'fallback') {
@@ -1684,41 +1746,36 @@ function renderSchedule() {
         <div class="nc-header">
           <div class="nc-vessel">
             <span class="nc-vessel-icon">⛴</span>
-            <span class="nc-vessel-name" style="color:${getVesselColor(next.vessel)}">${next.vessel || 'Vessel TBD'}</span>
+            <span class="nc-vessel-name" style="color:${vesselClr}">${next.vessel || 'Vessel TBD'}</span>
             <span class="nc-badge ${badgeCls}"><span class="dot"></span>${badgeText}</span>
           </div>
           <div class="nc-pill ${pillCls}" id="cdPill">${cd.text}</div>
         </div>
         <div class="nc-times">
-          <div class="nc-primary">
-            <div class="nc-primary-label">${bigLabel}</div>
-            <div class="nc-primary-time">
-              <span class="nc-time-big">${bigT}</span><span class="nc-time-ampm">${bigAp}</span>
+          <div class="nc-col ${seaPrimary ? 'nc-col-primary' : 'nc-col-secondary'}">
+            <div class="nc-col-label">${seaLabel}</div>
+            <div class="nc-col-time">
+              <span class="nc-t-big">${seaT}</span><span class="nc-t-ampm">${seaAp}</span>
             </div>
           </div>
-          <div class="nc-secondary">
-            <div class="nc-secondary-label">${smallLabel}</div>
-            <div class="nc-secondary-time">${fmtTime(smallTime)}</div>
+          <div class="nc-col ${biPrimary ? 'nc-col-primary' : 'nc-col-secondary'}">
+            <div class="nc-col-label">${biLabel}</div>
+            <div class="nc-col-time">
+              <span class="nc-t-big">${biT}</span><span class="nc-t-ampm">${biAp}</span>
+            </div>
           </div>
         </div>
-        ${footerText ? `<div class="nc-footer">${footerText}</div>` : ''}
-        <div class="nc-track-row" style="--vc:${getVesselColor(next.vessel)}">
-          <div class="nc-track-endpoints">
+        <div class="nc-route-wrap">
+          <div class="nc-track-row" style="--vc:${vesselClr}">
             <div class="nc-track-ep-wrap">
               <div class="ep-dot ${seaDotCls}"><div class="ep-core"></div><div class="ep-ring"></div></div>
               <span class="nc-track-label">SEA</span>
             </div>
             <div class="nc-track-line">
-              <div class="nc-track-fill" id="trackFill"></div>
-              <div class="nc-vessel-pin" id="vesselPin" style="${atDock ? 'display:none' : 'left:' + (isSeaBI ? '3' : '97') + '%'}">
-                <div class="nc-pin-icon">
-                  <svg viewBox="0 0 64 64" width="22" height="22">
-                    <path fill="currentColor" d="M32 5 C40 13,44 21,44 29 L44 54 C44 57,42 59,39 59 L25 59 C22 59,20 57,20 54 L20 29 C20 21,24 13,32 5 Z"/>
-                    <path fill="#0b1a2e" fill-opacity=".32" d="M32 13 C37.5 19,40 25,40 30 L40 51 C40 53,38.5 54.5,36.5 54.5 L27.5 54.5 C25.5 54.5,24 53,24 51 L24 30 C24 25,26.5 19,32 13 Z"/>
-                    <circle cx="32" cy="24" r="3.4" fill="#0b1a2e"/>
-                  </svg>
-                </div>
-                <div class="nc-pin-time" id="pinTime">${arriveTime ? fmtTime(arriveTime) : ''}</div>
+              <div class="nc-track-fill" id="ncTrackFill" style="${atDock ? 'width:0' : isSeaBI ? 'left:0;width:'+barPct.toFixed(1)+'%' : 'left:'+barPct.toFixed(1)+'%;width:'+(100-barPct).toFixed(1)+'%'}"></div>
+              <div class="nc-vessel-pin" id="ncPin" style="${atDock ? 'display:none' : 'left:'+barPct.toFixed(1)+'%'}">
+                <div class="nc-pin-icon">${ferryPinSvg}</div>
+                ${!atDock ? `<div class="nc-pin-time" id="ncPinTime">${cd.text}</div>` : ''}
               </div>
             </div>
             <div class="nc-track-ep-wrap">
@@ -1726,6 +1783,7 @@ function renderSchedule() {
               <span class="nc-track-label">BI</span>
             </div>
           </div>
+          ${footerText ? `<div class="nc-next-line">${footerText}</div>` : ''}
         </div>
       </div>`;
   }
@@ -1787,25 +1845,28 @@ function renderSchedule() {
     document.getElementById('schedChevron').classList.toggle('open', schedOpen);
   });
 
+  const nextCardEl = document.getElementById('nextCard');
   function updateProgress() {
-    const pinEl  = document.getElementById('vesselPin');
-    const fillEl = document.getElementById('trackFill');
-    if (!pinEl || !fillEl) return;
-    if (cardState === 'fallback' || cardState === 'at-dock') { pinEl.style.display = 'none'; return; }
-    const left = lv ? parseWSDot(lv.LeftDock) : null;
-    const eta  = liveEta || next.arrive;
-    if (!left || !eta) { pinEl.style.display = 'none'; return; }
-    const prog   = Math.max(0, Math.min(1, (Date.now() - left) / (eta - left)));
-    const seaBI  = direction === 'SEA-BI';
-    const pinPct = seaBI ? (3 + 94 * prog) : (97 - 94 * prog);
-    pinEl.style.left    = pinPct.toFixed(1) + '%';
-    pinEl.style.display = '';
-    if (seaBI) {
-      fillEl.style.left  = '0';
-      fillEl.style.width = pinPct.toFixed(1) + '%';
-    } else {
-      fillEl.style.left  = pinPct.toFixed(1) + '%';
-      fillEl.style.width = (100 - pinPct).toFixed(1) + '%';
+    if (!nextCardEl || cardState === 'fallback' || cardState === 'at-dock') return;
+    const totalTrip = (lvApproaching && actualDepart && approachEta)
+      ? approachEta - actualDepart
+      : scheduledTripMs;
+    if (totalTrip <= 0) return;
+    const remaining = cdTarget - Date.now();
+    let pct = Math.max(3, Math.min(97, (1 - remaining / totalTrip) * 100));
+    const isForward = lvApproaching ? direction === 'BI-SEA' : direction === 'SEA-BI';
+    if (!isForward) pct = 100 - pct;
+    const pin  = document.getElementById('ncPin');
+    const fill = document.getElementById('ncTrackFill');
+    if (pin)  pin.style.left = pct.toFixed(1) + '%';
+    if (fill) {
+      if (isForward) {
+        fill.style.left  = '0';
+        fill.style.width = pct.toFixed(1) + '%';
+      } else {
+        fill.style.left  = pct.toFixed(1) + '%';
+        fill.style.width = (100 - pct).toFixed(1) + '%';
+      }
     }
   }
   updateProgress();
@@ -1816,6 +1877,8 @@ function renderSchedule() {
     if (!pill) { clearInterval(cdTimer); return; }
     const { text } = countdownInfo(cdTarget);
     pill.textContent = text;
+    const pinTime = document.getElementById('ncPinTime');
+    if (pinTime) pinTime.textContent = text;
     updateProgress();
   }, 10000);
 }
@@ -1843,7 +1906,7 @@ function renderVesselStrip() {
       const sub = v.AtDock
         ? `Docked · ${v.DepartingTerminalAbbrev || ''}`
         : (eta ? `ETA ${fmtTime(eta)}` : `${Math.round(v.Speed || 0)} kts`);
-      const vcolor = v.AtDock ? '#ffc947' : getVesselColor(v.VesselName);
+      const vcolor = getVesselColor(v.VesselName);
       return `<div class="vessel-chip" data-vid="${v.VesselID}" style="border-color:${vcolor}22">
         <span class="chip-dot" style="background:${vcolor}"></span>
         <span class="chip-name" style="color:${vcolor}">${v.VesselName}</span>
@@ -1894,11 +1957,12 @@ function initMap() {
 }
 
 function vesselMarkerIcon(heading, atDock, vesselName) {
-  const color = atDock ? '#ffc947' : getVesselColor(vesselName);
+  const color = getVesselColor(vesselName);
+  const opacity = atDock ? '55' : '8c';  // dimmer glow when docked
   return L.divIcon({
     html: `<div style="width:36px;height:36px;display:flex;align-items:center;justify-content:center;color:${color}">
       <svg width="28" height="28" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"
-           style="transform:rotate(${heading||0}deg);filter:drop-shadow(0 0 6px ${color}8c) drop-shadow(0 0 14px ${color}47);overflow:visible">
+           style="transform:rotate(${heading||0}deg);filter:drop-shadow(0 0 6px ${color}${opacity}) drop-shadow(0 0 14px ${color}47);overflow:visible">
         <path fill="currentColor" d="M32 5 C 40 13, 44 21, 44 29 L 44 54 C 44 57, 42 59, 39 59 L 25 59 C 22 59, 20 57, 20 54 L 20 29 C 20 21, 24 13, 32 5 Z"/>
         <path fill="#0b1a2e" fill-opacity="0.32" d="M32 13 C 37.5 19, 40 25, 40 30 L 40 51 C 40 53, 38.5 54.5, 36.5 54.5 L 27.5 54.5 C 25.5 54.5, 24 53, 24 51 L 24 30 C 24 25, 26.5 19, 32 13 Z"/>
         <circle cx="32" cy="24" r="3.4" fill="#0b1a2e"/>
