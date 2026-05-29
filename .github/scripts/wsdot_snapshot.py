@@ -9,7 +9,7 @@ Writes pretty-printed JSON + a human-readable summary markdown.
 
 import json
 import os
-import sys
+import traceback
 import urllib.request
 from datetime import datetime, timezone
 
@@ -19,14 +19,13 @@ OUT_DIR  = "api-snapshots"
 TODAY    = datetime.now(timezone.utc).strftime("%Y-%m-%d")
 
 ROUTES = [
-    ("Seattle-Bainbridge",   "SEA-BI"),
-    ("Bainbridge-Seattle",   "BI-SEA"),
+    ("Seattle-Bainbridge", "SEA-BI"),
+    ("Bainbridge-Seattle", "BI-SEA"),
 ]
-
-TERMINAL_IDS = {7: "Seattle", 3: "Bainbridge Island"}
 
 
 def fetch(url):
+    print(f"  GET {url}")
     req = urllib.request.Request(url, headers={"Accept": "application/json"})
     with urllib.request.urlopen(req, timeout=30) as resp:
         return json.loads(resp.read().decode())
@@ -36,81 +35,121 @@ def save(filename, data):
     path = os.path.join(OUT_DIR, filename)
     with open(path, "w") as f:
         json.dump(data, f, indent=2)
-    print(f"  wrote {path} ({len(json.dumps(data))} bytes)")
+    size = len(json.dumps(data))
+    print(f"  saved {path} ({size:,} bytes)")
     return path
 
 
 def fetch_vessels():
-    print("Fetching vessel locations…")
-    locs  = fetch(f"{BASE_URL}/vessels/rest/vessellocations/{API_KEY}")
-    save("vessel-locations.json", locs)
+    print("\n=== Vessel Locations ===")
+    locs = None
+    try:
+        locs = fetch(f"{BASE_URL}/vessels/rest/vessellocations/{API_KEY}")
+        save("vessel-locations.json", locs)
+        print(f"  {len(locs)} vessels returned")
+    except Exception:
+        print("  ERROR fetching vessellocations:")
+        traceback.print_exc()
 
-    print("Fetching vessel basics…")
-    basics = fetch(f"{BASE_URL}/vessels/rest/vesselbasics/{API_KEY}")
-    save("vessel-basics.json", basics)
+    print("\n=== Vessel Basics ===")
+    basics = None
+    try:
+        basics = fetch(f"{BASE_URL}/vessels/rest/vesselbasics/{API_KEY}")
+        save("vessel-basics.json", basics)
+        print(f"  {len(basics)} vessel basics returned")
+    except Exception:
+        print("  ERROR fetching vesselbasics (endpoint may differ):")
+        traceback.print_exc()
+        # Try alternate path
+        try:
+            basics = fetch(f"{BASE_URL}/vessels/rest/vesselverbose/{API_KEY}")
+            save("vessel-basics.json", basics)
+            print(f"  {len(basics)} vessel verbose records returned (alternate endpoint)")
+        except Exception:
+            print("  Alternate endpoint also failed.")
 
-    # Write human-readable summary
+    # Write summary
     lines = [
         f"# WSDOT Vessel Snapshot — {TODAY}\n",
-        f"Total vessels returned: {len(locs)}\n",
-        "",
-        "| Vessel | InService | AtDock | From | To | ETA | Speed |",
-        "|--------|-----------|--------|------|----|-----|-------|",
+        f"Fetched at: {datetime.now(timezone.utc).isoformat()}\n",
     ]
-    for v in sorted(locs, key=lambda x: x.get("VesselName", "")):
-        name    = v.get("VesselName", "?")
-        insvc   = "✓" if v.get("InService") else "✗"
-        docked  = "✓" if v.get("AtDock")    else "—"
-        dep     = v.get("DepartingTerminalName", "—") or "—"
-        arr     = v.get("ArrivingTerminalName",  "—") or "—"
-        eta_raw = v.get("Eta") or ""
-        speed   = v.get("Speed", 0)
-        lines.append(f"| {name} | {insvc} | {docked} | {dep} | {arr} | {eta_raw} | {speed} kts |")
 
-    lines += [
-        "",
-        "## Vessel basics (class / capacity)",
-        "",
-        "| Vessel | Class | Car Capacity | Passenger Capacity |",
-        "|--------|-------|--------------|--------------------|",
-    ]
-    for v in sorted(basics, key=lambda x: x.get("VesselName", "")):
-        name  = v.get("VesselName", "?")
-        cls   = v.get("VesselSubjectID", "?")
-        cars  = v.get("CarCapacity", "?")
-        pax   = v.get("PassengerCapacity", "?")
-        lines.append(f"| {name} | {cls} | {cars} | {pax} |")
+    if locs:
+        lines += [
+            f"\n## Live Vessel Locations ({len(locs)} total)\n",
+            "| Vessel | InService | AtDock | From | To | Speed | ETA |",
+            "|--------|-----------|--------|------|----|-------|-----|",
+        ]
+        for v in sorted(locs, key=lambda x: x.get("VesselName", "")):
+            name   = v.get("VesselName", "?")
+            insvc  = "✓" if v.get("InService") else "✗"
+            docked = "✓" if v.get("AtDock") else "—"
+            dep    = v.get("DepartingTerminalName") or "—"
+            arr    = v.get("ArrivingTerminalName") or "—"
+            speed  = v.get("Speed", 0)
+            eta    = v.get("Eta") or "—"
+            lines.append(f"| {name} | {insvc} | {docked} | {dep} | {arr} | {speed} kts | {eta} |")
+    else:
+        lines.append("\n*Vessel locations unavailable*\n")
+
+    if basics:
+        lines += [
+            f"\n## Vessel Fleet Info ({len(basics)} vessels)\n",
+            "| Vessel | Class | Cars | Passengers |",
+            "|--------|-------|------|------------|",
+        ]
+        for v in sorted(basics, key=lambda x: x.get("VesselName", "")):
+            name = v.get("VesselName", "?")
+            cls  = v.get("Class") or v.get("VesselSubjectID") or "?"
+            cars = v.get("CarCapacity") or v.get("RegCarDeckCapacity") or "?"
+            pax  = v.get("PassengerCapacity") or v.get("MaxPassengerCount") or "?"
+            lines.append(f"| {name} | {cls} | {cars} | {pax} |")
+    else:
+        lines.append("\n*Vessel basics unavailable*\n")
 
     with open(os.path.join(OUT_DIR, "vessel-summary.md"), "w") as f:
         f.write("\n".join(lines) + "\n")
-    print(f"  wrote {OUT_DIR}/vessel-summary.md")
+    print(f"  saved {OUT_DIR}/vessel-summary.md")
 
 
 def fetch_schedule():
-    print("Fetching schedules…")
-    all_routes = {}
+    print("\n=== Schedules ===")
+    lines = [f"# WSDOT Schedule Snapshot — {TODAY}\n",
+             f"Fetched at: {datetime.now(timezone.utc).isoformat()}\n"]
+
     for route_name, abbrev in ROUTES:
         url = f"{BASE_URL}/schedule/rest/schedule/GetSchedule/{API_KEY}/{TODAY}/{route_name}"
-        data = fetch(url)
-        all_routes[abbrev] = data
-        save(f"schedule-{abbrev}-{TODAY}.json", data)
-
-    # Human-readable summary
-    lines = [f"# WSDOT Schedule Snapshot — {TODAY}\n"]
-    for abbrev, data in all_routes.items():
-        lines.append(f"\n## {abbrev}\n")
-        sailings = []
         try:
-            for t in data.get("TerminalCombos", []):
-                for s in t.get("Times", []):
-                    depart = s.get("DepartingTime", "")
-                    arrive = s.get("ArrivingTime", "")
-                    vessel = s.get("VesselName", "?")
-                    sailings.append((depart, arrive, vessel))
-        except Exception as e:
-            lines.append(f"Parse error: {e}\n")
+            data = fetch(url)
+            save(f"schedule-{abbrev}-{TODAY}.json", data)
+        except Exception:
+            print(f"  ERROR fetching schedule for {abbrev}:")
+            traceback.print_exc()
+            lines.append(f"\n## {abbrev}\n*Unavailable*\n")
             continue
 
+        sailings = []
+        try:
+            # WSDOT schedule structure: ScheduledRoutes > ScheduledTimes
+            # Try multiple known structures
+            times_found = False
+            for top_key in ("ScheduledRoutes", "TerminalCombos"):
+                for route_block in data.get(top_key, []):
+                    for times_key in ("ScheduledTimes", "Times"):
+                        for s in route_block.get(times_key, []):
+                            dep    = s.get("DepartingTime") or s.get("DepartTime") or "?"
+                            arr    = s.get("ArrivingTime")  or s.get("ArriveTime")  or "?"
+                            vessel = s.get("VesselName") or "?"
+                            sailings.append((dep, arr, vessel))
+                            times_found = True
+            if not times_found:
+                # Dump the top-level keys so we can learn the structure
+                lines.append(f"\n## {abbrev} — raw top-level keys: {list(data.keys())}\n")
+                continue
+        except Exception:
+            traceback.print_exc()
+
+        lines.append(f"\n## {abbrev} — {len(sailings)} sailings\n")
         lines.append("| Departs | Arrives | Vessel |")
         lines.append("|---------|---------|--------|")
         for dep, arr, ves in sailings:
@@ -118,7 +157,7 @@ def fetch_schedule():
 
     with open(os.path.join(OUT_DIR, f"schedule-summary-{TODAY}.md"), "w") as f:
         f.write("\n".join(lines) + "\n")
-    print(f"  wrote {OUT_DIR}/schedule-summary-{TODAY}.md")
+    print(f"  saved {OUT_DIR}/schedule-summary-{TODAY}.md")
 
 
 def main():
@@ -128,7 +167,8 @@ def main():
         return
 
     with open(request_file) as f:
-        keywords = {line.strip().lower() for line in f if line.strip()}
+        keywords = {line.strip().lower() for line in f
+                    if line.strip() and not line.strip().startswith("#")}
 
     print(f"Keywords: {keywords}")
     want_all      = "all"      in keywords
