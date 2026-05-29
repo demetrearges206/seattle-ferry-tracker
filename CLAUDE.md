@@ -22,6 +22,10 @@ Real-time WSDOT Seattle ↔ Bainbridge Island ferry tracker. Single deliverable:
 - `.github/scripts/figma_sync.py` — Python script that calls Figma REST API, writes `figma-specs/`
 - `figma-specs/request.txt` — one Figma node URL per line; committing here triggers auto-sync
 - `figma-specs/*.json` / `figma-specs/*.png` / `figma-specs/*-summary.md` — output from sync
+- `.github/workflows/wsdot-snapshot.yml` — auto-triggers on push when `api-snapshots/request.txt` changes; fetches live WSDOT API data and commits JSON + markdown back to `main`
+- `.github/scripts/wsdot_snapshot.py` — Python script that fetches vessellocations, vesselbasics, and schedule; writes `api-snapshots/`
+- `api-snapshots/request.txt` — keywords (`vessels`, `schedule`, `all`); committing here triggers auto-snapshot
+- `api-snapshots/*.json` / `api-snapshots/*-summary.md` — live API snapshots committed by bot
 - `design/Boat Icon/ferry-deck.svg` — source SVG for vessel map marker icon
 - `CLAUDE.md` — this file
 
@@ -58,6 +62,33 @@ Claude pulls / reads specs via local git or GitHub MCP, then implements
 6. Implement, bump BUILD, commit + push to `main`
 
 **Do not attempt to call `api.figma.com` directly — it will always fail.**
+
+---
+
+## WSDOT API snapshot workflow
+
+The WSDOT API (`www.wsdot.wa.gov`) is also blocked from cloud sessions. Use the same git-trigger pattern:
+
+### Step-by-step when you need live API data
+
+1. Write keyword(s) to `api-snapshots/request.txt`: `vessels`, `schedule`, or `all`
+2. Commit + push to `main` — `wsdot-snapshot.yml` fires automatically
+3. Wait for the bot commit (watch via `git pull` or GitHub MCP `list_commits`)
+4. Read `api-snapshots/vessel-summary.md` (vessel list + status) or `api-snapshots/schedule-summary-YYYY-MM-DD.md`
+
+**Available keywords:**
+- `vessels` — fetches `vessellocations` (live positions/status) + `vesselbasics` (static fleet info)
+- `schedule` — fetches today's SEA-BI and BI-SEA schedules
+- `all` — fetches everything
+
+**Output files committed by the bot:**
+- `api-snapshots/vessel-locations.json` — raw vessellocations response
+- `api-snapshots/vessel-basics.json` — raw vesselbasics response
+- `api-snapshots/vessel-summary.md` — readable table: vessel name, InService, AtDock, From/To, ETA, speed
+- `api-snapshots/schedule-SEA-BI-YYYY-MM-DD.json` — raw schedule
+- `api-snapshots/schedule-summary-YYYY-MM-DD.md` — readable sailings table
+
+**Do not attempt to call `www.wsdot.wa.gov` directly from a cloud session — it will always fail.**
 
 ---
 
