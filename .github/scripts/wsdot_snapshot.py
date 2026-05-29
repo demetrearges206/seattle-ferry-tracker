@@ -28,7 +28,9 @@ def fetch(url):
     print(f"  GET {url}")
     req = urllib.request.Request(url, headers={"Accept": "application/json"})
     with urllib.request.urlopen(req, timeout=30) as resp:
-        return json.loads(resp.read().decode())
+        raw = resp.read().decode()
+        print(f"  HTTP {resp.status} ({len(raw)} bytes)")
+        return json.loads(raw)
 
 
 def save(filename, data):
@@ -161,6 +163,21 @@ def fetch_schedule():
 
 
 def main():
+    log_lines = [f"Run at: {datetime.now(timezone.utc).isoformat()}",
+                 f"API_KEY prefix: {API_KEY[:8]}..."]
+
+    # Monkey-patch fetch to also log to file
+    original_fetch = globals()['fetch']
+    def logged_fetch(url):
+        try:
+            result = original_fetch(url)
+            log_lines.append(f"OK  {url}")
+            return result
+        except Exception as e:
+            log_lines.append(f"ERR {url} — {type(e).__name__}: {e}")
+            raise
+    globals()['fetch'] = logged_fetch
+
     request_file = os.path.join(OUT_DIR, "request.txt")
     if not os.path.exists(request_file):
         print("No request.txt found — nothing to do.")
@@ -182,6 +199,10 @@ def main():
 
     if not want_vessels and not want_schedule:
         print("No recognised keywords (vessels / schedule / all). Nothing fetched.")
+
+    with open(os.path.join(OUT_DIR, "last-run.log"), "w") as f:
+        f.write("\n".join(log_lines) + "\n")
+    print("Wrote last-run.log")
 
 
 if __name__ == "__main__":
