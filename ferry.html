@@ -1132,7 +1132,7 @@ svg.leaflet-image-layer.leaflet-interactive path {
 'use strict';
 
 // ── Build version — bump this string on every deploy ─────
-const BUILD = 'r54';
+const BUILD = 'r55';
 
 // ── Config ───────────────────────────────────────────────
 const API_KEY   = 'ff39cd9c-729e-40ac-b740-1cebec6226f9';
@@ -1696,7 +1696,7 @@ function renderSchedule() {
     return isForward ? pct : (100 - pct);
   };
   const barPct    = computeBarPct();
-  const ferryRot  = direction === 'SEA-BI' ? 90 : -90;
+  const ferryRot  = ((direction === 'SEA-BI') !== lvApproaching) ? 90 : -90;
   const vesselClr = getVesselColor(next.vessel);
   const ferryPinSvg = `<svg width="28" height="28" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"
     style="transform:rotate(${ferryRot}deg);overflow:visible;display:block">
