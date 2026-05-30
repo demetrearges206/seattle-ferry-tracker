@@ -466,19 +466,19 @@
                 stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="4 8"/>
 
           <g id="term-bi">
-            <rect x="541" y="416" width="56" height="22" rx="5"
+            <rect x="547" y="416" width="44" height="22" rx="5"
                   fill="#07111e" stroke="#60a5fa" stroke-width="1.5"/>
             <g id="term-dots-bi"></g>
-            <text x="578" y="431" text-anchor="middle"
+            <text x="569" y="431" text-anchor="middle"
                   font-family="-apple-system,system-ui,sans-serif"
                   font-size="14" font-weight="700" fill="#60a5fa">BI</text>
           </g>
 
           <g id="term-sea">
-            <rect x="844" y="460" width="66" height="22" rx="5"
+            <rect x="848" y="460" width="52" height="22" rx="5"
                   fill="#07111e" stroke="#00c9a7" stroke-width="1.5"/>
             <g id="term-dots-sea"></g>
-            <text x="884" y="475" text-anchor="middle"
+            <text x="874" y="475" text-anchor="middle"
                   font-family="-apple-system,system-ui,sans-serif"
                   font-size="14" font-weight="700" fill="#00c9a7">SEA</text>
           </g>
@@ -514,7 +514,7 @@
 'use strict';
 
 // ── Build version — bump this string on every deploy ─────
-const BUILD = 'r66';
+const BUILD = 'r67';
 
 // ── Config ───────────────────────────────────────────────
 const API_KEY   = 'ff39cd9c-729e-40ac-b740-1cebec6226f9';
@@ -1330,7 +1330,10 @@ function initMapInteraction() {
   }, { passive: false });
 
   svg.addEventListener('touchend', e => {
-    if (e.touches.length < 2) wasPinching = false;
+    if (e.touches.length < 2) {
+      if (wasPinching) pinchEndTime = Date.now();
+      wasPinching = false;
+    }
     lastTouches = tArr(e);
   });
 
@@ -1353,9 +1356,9 @@ function initMapInteraction() {
   });
   window.addEventListener('mouseup', () => { drag = null; });
 
-  let lastTap = 0;
+  let lastTap = 0, pinchEndTime = 0;
   svg.addEventListener('touchend', e => {
-    if (e.changedTouches.length === 1 && !wasPinching) {
+    if (e.changedTouches.length === 1 && !wasPinching && (Date.now() - pinchEndTime > 500)) {
       const now = Date.now();
       if (now - lastTap < 300) { vb = { ...orig }; applyVB(); }
       lastTap = now;
@@ -1375,14 +1378,19 @@ function initMapPopup() {
     const color = getVesselColor(vname);
     document.getElementById('map-popup-name').textContent = vname;
     document.getElementById('map-popup-name').style.color = color;
-    const from = v.DepartingTerminalID === TERMINALS.SEA.id ? 'Seattle' : 'Bainbridge';
-    const to   = v.ArrivingTerminalID  === TERMINALS.SEA.id ? 'Seattle' : 'Bainbridge';
-    const eta  = v.Eta ? parseWSDot(v.Eta) : null;
-    const mins = eta ? Math.round((eta - Date.now()) / 60000) : null;
-    const etaStr = eta ? `${fmtTime(eta)} (${mins > 0 ? mins + 'm' : 'now'})` : '—';
+    const from  = v.DepartingTerminalID === TERMINALS.SEA.id ? 'Seattle' : 'Bainbridge';
+    const to    = v.ArrivingTerminalID  === TERMINALS.SEA.id ? 'Seattle' : 'Bainbridge';
+    const eta   = v.Eta      ? parseWSDot(v.Eta)      : null;
+    const left  = v.LeftDock ? parseWSDot(v.LeftDock) : null;
+    const mins  = eta ? Math.round((eta - Date.now()) / 60000) : null;
+    const etaStr = eta  ? `${fmtTime(eta)} (${mins > 0 ? mins + 'm' : 'now'})` : '—';
+    const depStr = left ? fmtTime(left) : null;
+    const speed  = v.Speed != null ? `${v.Speed.toFixed(1)} kts` : null;
     document.getElementById('map-popup-body').innerHTML =
       `<div class="map-popup-row"><b>${from}</b> → <b>${to}</b></div>` +
-      `<div class="map-popup-row">ETA&nbsp;<b>${etaStr}</b></div>`;
+      (depStr ? `<div class="map-popup-row">Dep&nbsp;<b>${depStr}</b></div>` : '') +
+      `<div class="map-popup-row">ETA&nbsp;<b>${etaStr}</b></div>` +
+      (speed  ? `<div class="map-popup-row"><b>${speed}</b></div>` : '');
     popup.classList.add('visible');
   }
 
@@ -1444,18 +1452,22 @@ function updateMap() {
 
   markersG.innerHTML = parts.join('');
 
-  function dockDots(vessels, baseCX, cy) {
-    return vessels.map((v, i) => {
-      const c = getVesselColor(v.VesselName);
-      const cx = baseCX + i * 12;
-      const d  = (i * 0.4).toFixed(1);
-      return `<circle cx="${cx}" cy="${cy}" r="3.5" fill="${c}">` +
+  function updateTermLabel(termId, vessels, cX, cW, cTX, dotCY) {
+    const g = document.getElementById(termId);
+    if (!g) return;
+    const extra = vessels.length * 14;
+    g.querySelector('rect').setAttribute('x',    String(cX - extra));
+    g.querySelector('rect').setAttribute('width', String(cW + extra));
+    g.querySelector('text').setAttribute('x',    String(cTX));
+    g.querySelector('g').innerHTML = vessels.map((v, i) => {
+      const c = getVesselColor(v.VesselName), cx = cX - extra + 7 + i * 14, d = (i * 0.4).toFixed(1);
+      return `<circle cx="${cx}" cy="${dotCY}" r="3.5" fill="${c}">` +
         `<animate attributeName="r" values="3;5;3" dur="2.2s" begin="${d}s" repeatCount="indefinite"/>` +
         `<animate attributeName="opacity" values="1;0.45;1" dur="2.2s" begin="${d}s" repeatCount="indefinite"/></circle>`;
     }).join('');
   }
-  if (dotsBi)  dotsBi.innerHTML  = dockDots(dockedAtBI,  551, 427);
-  if (dotsSea) dotsSea.innerHTML = dockDots(dockedAtSEA, 858, 471);
+  updateTermLabel('term-bi',  dockedAtBI,  547, 44, 569, 427);
+  updateTermLabel('term-sea', dockedAtSEA, 848, 52, 874, 471);
 }
 
 // ── Status bar ────────────────────────────────────────────
