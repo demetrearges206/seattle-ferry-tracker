@@ -486,7 +486,7 @@
 'use strict';
 
 // ── Build version — bump this string on every deploy ─────
-const BUILD = 'r63';
+const BUILD = 'r64';
 
 // ── Config ───────────────────────────────────────────────
 const API_KEY   = 'ff39cd9c-729e-40ac-b740-1cebec6226f9';
@@ -1249,19 +1249,20 @@ function updateMap() {
   const rv = routeVessels();
   const parts = [];
 
-  rv.forEach(v => {
-    const color = getVesselColor(v.VesselName);
+  rv.forEach((v, idx) => {
+    const color  = getVesselColor(v.VesselName);
+    const seaBI  = v.DepartingTerminalID === TERMINALS.SEA.id;
     let t;
     if (v.AtDock) {
-      const atSEA = v.DepartingTerminalID === TERMINALS.SEA.id
-                 || v.ArrivingTerminalID   === TERMINALS.SEA.id;
-      t = atSEA ? L : 0;
+      const atSEA = seaBI || v.ArrivingTerminalID === TERMINALS.SEA.id;
+      const base  = atSEA ? L : 0;
+      // Spread multiple docked vessels slightly so they don't stack
+      t = Math.max(0, Math.min(L, base + (atSEA ? -1 : 1) * idx * 30));
     } else {
       const left = parseWSDot(v.LeftDock);
       const eta  = v.Eta ? parseWSDot(v.Eta) : null;
       if (left && eta) {
-        const prog  = Math.max(0, Math.min(1, (Date.now() - left) / (eta - left)));
-        const seaBI = v.DepartingTerminalID === TERMINALS.SEA.id;
+        const prog = Math.max(0, Math.min(1, (Date.now() - left) / (eta - left)));
         t = seaBI ? L * (1 - prog) : L * prog;
       } else {
         t = L / 2;
@@ -1270,7 +1271,9 @@ function updateMap() {
     const pt = routePath.getPointAtLength(t);
     const p1 = routePath.getPointAtLength(Math.max(0, t - 1));
     const p2 = routePath.getPointAtLength(Math.min(L, t + 1));
-    const ang = Math.atan2(p2.y - p1.y, p2.x - p1.x) * 180 / Math.PI + 90;
+    // Path goes BI→SEA (left→right), so SEA-departing vessels need a 180° flip
+    const rawAng = Math.atan2(p2.y - p1.y, p2.x - p1.x) * 180 / Math.PI + 90;
+    const ang    = seaBI ? rawAng + 180 : rawAng;
     const glow = v.AtDock ? '26' : '55';
     parts.push(
       `<g transform="translate(${pt.x.toFixed(1)},${pt.y.toFixed(1)})">` +
