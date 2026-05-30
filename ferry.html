@@ -486,7 +486,7 @@
 'use strict';
 
 // ── Build version — bump this string on every deploy ─────
-const BUILD = 'r64';
+const BUILD = 'r65';
 
 // ── Config ───────────────────────────────────────────────
 const API_KEY   = 'ff39cd9c-729e-40ac-b740-1cebec6226f9';
@@ -1254,7 +1254,7 @@ function updateMap() {
     const seaBI  = v.DepartingTerminalID === TERMINALS.SEA.id;
     let t;
     if (v.AtDock) {
-      const atSEA = seaBI || v.ArrivingTerminalID === TERMINALS.SEA.id;
+      const atSEA = v.DepartingTerminalID === TERMINALS.SEA.id;
       const base  = atSEA ? L : 0;
       // Spread multiple docked vessels slightly so they don't stack
       t = Math.max(0, Math.min(L, base + (atSEA ? -1 : 1) * idx * 30));
@@ -1274,12 +1274,15 @@ function updateMap() {
     // Path goes BI→SEA (left→right), so SEA-departing vessels need a 180° flip
     const rawAng = Math.atan2(p2.y - p1.y, p2.x - p1.x) * 180 / Math.PI + 90;
     const ang    = seaBI ? rawAng + 180 : rawAng;
-    const glow = v.AtDock ? '26' : '55';
+    const glow   = v.AtDock ? '26' : '55';
+    const shadow = v.AtDock
+      ? `drop-shadow(0 0 5px ${color}66) drop-shadow(0 0 12px ${color}33)`
+      : `drop-shadow(0 0 7px ${color}bb) drop-shadow(0 0 18px ${color}66)`;
     parts.push(
       `<g transform="translate(${pt.x.toFixed(1)},${pt.y.toFixed(1)})">` +
       `<circle r="22" fill="${color}${glow}"/>` +
       `<g transform="rotate(${ang.toFixed(1)}) translate(-20,-20)">` +
-      `<svg width="40" height="40" viewBox="0 0 64 64" overflow="visible">` +
+      `<svg width="40" height="40" viewBox="0 0 64 64" overflow="visible" style="filter:${shadow}">` +
       `<path fill="${color}" d="M32 5C40 13,44 21,44 29L44 54C44 57,42 59,39 59L25 59C22 59,20 57,20 54L20 29C20 21,24 13,32 5Z"/>` +
       `<path fill="#0b1a2e" fill-opacity=".32" d="M32 13C37.5 19,40 25,40 30L40 51C40 53,38.5 54.5,36.5 54.5L27.5 54.5C25.5 54.5,24 53,24 51L24 30C24 25,26.5 19,32 13Z"/>` +
       `<circle cx="32" cy="24" r="3.4" fill="#0b1a2e"/></svg></g></g>`
