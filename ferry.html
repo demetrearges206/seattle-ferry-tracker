@@ -225,6 +225,13 @@
     .ep-dot--vring  .ep-core { border: 2px solid var(--vc); background: transparent; box-shadow: 0 0 7px color-mix(in oklab, var(--vc) 40%, transparent); }
     .ep-dot--docked .ep-core { border: none; background: var(--vc); box-shadow: 0 0 10px color-mix(in oklab, var(--vc) 60%, transparent); }
     .ep-dot--docked .ep-ring { animation: ncDockPulse 2.4s ease-out infinite; }
+    .ep-dot--destination .ep-core { border: 2px solid var(--vc); background: color-mix(in oklab, var(--vc) 22%, transparent); box-shadow: 0 0 8px color-mix(in oklab, var(--vc) 45%, transparent); }
+    .ep-dot--destination .ep-ring { animation: ncDestPulse 3.2s ease-out infinite; }
+    @keyframes ncDestPulse {
+      0%   { transform: translate(-50%,-50%) scale(1);   opacity: .5; }
+      55%  { transform: translate(-50%,-50%) scale(1.85);opacity: 0;  }
+      100% { transform: translate(-50%,-50%) scale(1.85);opacity: 0;  }
+    }
     @keyframes ncDockPulse {
       0%   { transform: translate(-50%,-50%) scale(1);    opacity: .6; }
       70%  { transform: translate(-50%,-50%) scale(2.05); opacity: 0; }
@@ -312,9 +319,8 @@
 
     /* ── Map ─────────────────────────────────────────────────── */
     .map-section { margin: 0 16px; }
-    .map-frame { border-radius: var(--radius); border: 1px solid var(--border); height: 220px; position: relative; overflow: hidden; cursor: grab; }
-    .map-frame:active { cursor: grabbing; }
-    #ferry-map-svg { display: block; width: 100%; height: 100%; touch-action: none; user-select: none; }
+    .map-frame { border-radius: var(--radius); border: 1px solid var(--border); height: 220px; position: relative; overflow: hidden; }
+    #ferry-map-svg { display: block; width: 100%; height: 100%; }
     .map-popup {
       position: absolute; top: 8px; left: 8px; z-index: 10;
       background: rgba(11,26,46,0.93); backdrop-filter: blur(8px);
@@ -514,7 +520,7 @@
 'use strict';
 
 // ── Build version — bump this string on every deploy ─────
-const BUILD = 'r67';
+const BUILD = 'r68';
 
 // ── Config ───────────────────────────────────────────────
 const API_KEY   = 'ff39cd9c-729e-40ac-b740-1cebec6226f9';
@@ -1066,12 +1072,18 @@ function renderSchedule() {
   </svg>`;
 
   const isSeaBI   = direction === 'SEA-BI';
+  // destIsBI: true when vessel is heading toward BI (XOR with lvApproaching which reverses it)
+  const destIsBI  = isSeaBI !== Boolean(lvApproaching);
   const seaDotCls = cardState === 'at-dock'
     ? (isSeaBI ? 'ep-dot--docked' : 'ep-dot--hollow')
-    : (isSeaBI ? 'ep-dot--hollow' : 'ep-dot--vring');
+    : cardState === 'fallback'
+    ? 'ep-dot--hollow'
+    : (destIsBI ? 'ep-dot--hollow' : 'ep-dot--destination');
   const biDotCls  = cardState === 'at-dock'
     ? (isSeaBI ? 'ep-dot--hollow' : 'ep-dot--docked')
-    : (isSeaBI ? 'ep-dot--vring'  : 'ep-dot--hollow');
+    : cardState === 'fallback'
+    ? 'ep-dot--hollow'
+    : (destIsBI ? 'ep-dot--destination' : 'ep-dot--hollow');
   const badgeCls = {
     'at-dock': 'nc-badge--atdock', 'sailing': 'nc-badge--sailing',
     'arriving': 'nc-badge--arriving', 'delayed': 'nc-badge--delayed',
@@ -1266,107 +1278,6 @@ function renderVesselStrip() {
 
 function initMap() {}
 
-function initMapInteraction() {
-  const svg = document.getElementById('ferry-map-svg');
-  if (!svg) return;
-  const orig = { x: 450, y: 370, w: 480, h: 260 };
-  let vb = { ...orig };
-  const MIN_W = orig.w / 3, MAX_W = orig.w;
-
-  function applyVB() {
-    svg.setAttribute('viewBox', `${vb.x.toFixed(1)} ${vb.y.toFixed(1)} ${vb.w.toFixed(1)} ${vb.h.toFixed(1)}`);
-  }
-  function clamp() {
-    const m = 80;
-    vb.x = Math.max(orig.x - m, Math.min(orig.x + orig.w + m - vb.w, vb.x));
-    vb.y = Math.max(orig.y - m, Math.min(orig.y + orig.h + m - vb.h, vb.y));
-  }
-  function toSVG(cx, cy) {
-    const r = svg.getBoundingClientRect();
-    return { x: vb.x + (cx - r.left) / r.width * vb.w, y: vb.y + (cy - r.top) / r.height * vb.h };
-  }
-  function zoom(factor, pivotCX, pivotCY) {
-    const newW = Math.max(MIN_W, Math.min(MAX_W, vb.w * factor));
-    const newH = newW * (orig.h / orig.w);
-    const p = toSVG(pivotCX, pivotCY);
-    vb.x = p.x - (p.x - vb.x) * (newW / vb.w);
-    vb.y = p.y - (p.y - vb.y) * (newH / vb.h);
-    vb.w = newW; vb.h = newH;
-    clamp(); applyVB();
-  }
-
-  let lastTouches = null, wasPinching = false;
-  function tArr(e) { return [...e.touches].map(t => ({ clientX: t.clientX, clientY: t.clientY })); }
-  function tdist(a, b) { return Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY); }
-
-  svg.addEventListener('touchstart', e => {
-    lastTouches = tArr(e);
-    if (e.touches.length >= 2) { wasPinching = true; e.preventDefault(); }
-  }, { passive: false });
-
-  svg.addEventListener('touchmove', e => {
-    e.preventDefault();
-    const cur = tArr(e);
-    if (!lastTouches) { lastTouches = cur; return; }
-    if (cur.length >= 2 && lastTouches.length >= 2) {
-      const d0 = tdist(lastTouches[0], lastTouches[1]);
-      const d1 = tdist(cur[0], cur[1]);
-      const m0cx = (lastTouches[0].clientX + lastTouches[1].clientX) / 2;
-      const m0cy = (lastTouches[0].clientY + lastTouches[1].clientY) / 2;
-      const m1cx = (cur[0].clientX + cur[1].clientX) / 2;
-      const m1cy = (cur[0].clientY + cur[1].clientY) / 2;
-      zoom(d0 / d1, m0cx, m0cy);
-      const r = svg.getBoundingClientRect();
-      vb.x -= (m1cx - m0cx) / r.width  * vb.w;
-      vb.y -= (m1cy - m0cy) / r.height * vb.h;
-      clamp(); applyVB();
-    } else if (cur.length === 1 && lastTouches.length >= 1 && !wasPinching) {
-      const r = svg.getBoundingClientRect();
-      vb.x -= (cur[0].clientX - lastTouches[0].clientX) / r.width  * vb.w;
-      vb.y -= (cur[0].clientY - lastTouches[0].clientY) / r.height * vb.h;
-      clamp(); applyVB();
-    }
-    lastTouches = cur;
-  }, { passive: false });
-
-  svg.addEventListener('touchend', e => {
-    if (e.touches.length < 2) {
-      if (wasPinching) pinchEndTime = Date.now();
-      wasPinching = false;
-    }
-    lastTouches = tArr(e);
-  });
-
-  svg.addEventListener('wheel', e => {
-    e.preventDefault();
-    zoom(e.deltaY > 0 ? 1.12 : 0.88, e.clientX, e.clientY);
-  }, { passive: false });
-
-  let drag = null;
-  svg.addEventListener('mousedown', e => {
-    drag = { sx: e.clientX, sy: e.clientY, vbx: vb.x, vby: vb.y };
-    e.preventDefault();
-  });
-  window.addEventListener('mousemove', e => {
-    if (!drag) return;
-    const r = svg.getBoundingClientRect();
-    vb.x = drag.vbx - (e.clientX - drag.sx) / r.width  * vb.w;
-    vb.y = drag.vby - (e.clientY - drag.sy) / r.height * vb.h;
-    clamp(); applyVB();
-  });
-  window.addEventListener('mouseup', () => { drag = null; });
-
-  let lastTap = 0, pinchEndTime = 0;
-  svg.addEventListener('touchend', e => {
-    if (e.changedTouches.length === 1 && !wasPinching && (Date.now() - pinchEndTime > 500)) {
-      const now = Date.now();
-      if (now - lastTap < 300) { vb = { ...orig }; applyVB(); }
-      lastTap = now;
-    }
-  });
-  svg.addEventListener('dblclick', () => { vb = { ...orig }; applyVB(); });
-}
-
 function initMapPopup() {
   const markersG = document.getElementById('vessel-markers');
   const popup    = document.getElementById('map-popup');
@@ -1439,9 +1350,15 @@ function updateMap() {
     const p2 = routePath.getPointAtLength(Math.min(L, t + 1));
     const rawAng = Math.atan2(p2.y - p1.y, p2.x - p1.x) * 180 / Math.PI + 90;
     const ang    = seaBI ? rawAng + 180 : rawAng;
+    // Offset perpendicular to path: BI→SEA lane is below, SEA→BI lane is above
+    const tdx = p2.x - p1.x, tdy = p2.y - p1.y, tlen = Math.sqrt(tdx*tdx + tdy*tdy) || 1;
+    const LANE = 7; // SVG units; CCW rotation gives "below" for a rightward path in SVG coords
+    const laneSign = seaBI ? -1 : 1;
+    const mx = pt.x + (-tdy / tlen) * LANE * laneSign;
+    const my = pt.y + ( tdx / tlen) * LANE * laneSign;
     const sf = `drop-shadow(0 0 6px color-mix(in srgb,${color} 55%,transparent)) drop-shadow(0 0 14px color-mix(in srgb,${color} 28%,transparent))`;
     parts.push(
-      `<g transform="translate(${pt.x.toFixed(1)},${pt.y.toFixed(1)})" data-vname="${v.VesselName}" style="cursor:pointer">` +
+      `<g transform="translate(${mx.toFixed(1)},${my.toFixed(1)})" data-vname="${v.VesselName}" style="cursor:pointer">` +
       `<g transform="rotate(${ang.toFixed(1)}) translate(-20,-20)" style="color:${color};filter:${sf}">` +
       `<svg width="40" height="40" viewBox="0 0 64 64" overflow="visible" style="display:block">` +
       `<path fill="currentColor" d="M32 5C40 13,44 21,44 29L44 54C44 57,42 59,39 59L25 59C22 59,20 57,20 54L20 29C20 21,24 13,32 5Z"/>` +
@@ -1557,7 +1474,6 @@ setInterval(() => refresh(true),   10 * 60 * 1000);
 document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('buildTag').textContent = BUILD;
   initMap();
-  initMapInteraction();
   initMapPopup();
 
   // Render cached schedule immediately so the UI appears without waiting for API
