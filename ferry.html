@@ -242,8 +242,8 @@
       display: flex; flex-direction: column; align-items: center; z-index: 4;
     }
     .nc-pin-icon {
-      width: 24px; height: 24px; display: flex; align-items: center;
-      justify-content: center; margin-top: -12px;
+      width: 36px; height: 36px; display: flex; align-items: center;
+      justify-content: center; margin-top: -18px;
       color: var(--vc);
       filter:
         drop-shadow(0 0 6px  color-mix(in srgb, currentColor 55%, transparent))
@@ -427,8 +427,8 @@
 </header>
 
 <div class="tabs">
-  <button class="tab active" data-dir="SEA-BI" id="tabSeaBi">SEA → BI</button>
-  <button class="tab" data-dir="BI-SEA" id="tabBiSea">BI → SEA</button>
+  <button class="tab active" data-dir="SEA-BI" id="tabSeaBi">SEA → BBI</button>
+  <button class="tab" data-dir="BI-SEA" id="tabBiSea">BBI → SEA</button>
 </div>
 
 <div class="scroll-body">
@@ -445,7 +445,7 @@
 
     <div class="map-section">
       <div class="map-frame">
-        <svg id="ferry-map-svg" viewBox="450 370 480 260"
+        <svg id="ferry-map-svg" viewBox="490 385 415 224"
              preserveAspectRatio="xMidYMid meet"
              xmlns="http://www.w3.org/2000/svg" style="display:block;width:100%;height:100%">
           <rect width="1265" height="1181" transform="translate(0 0.390015)" fill="#060F1F"/>
@@ -477,7 +477,7 @@
             <g id="term-dots-bi"></g>
             <text x="569" y="431" text-anchor="middle"
                   font-family="-apple-system,system-ui,sans-serif"
-                  font-size="14" font-weight="700" fill="#60a5fa">BI</text>
+                  font-size="14" font-weight="700" fill="#60a5fa">BBI</text>
           </g>
 
           <g id="term-sea">
@@ -520,7 +520,7 @@
 'use strict';
 
 // ── Build version — bump this string on every deploy ─────
-const BUILD = 'r68';
+const BUILD = 'r69';
 
 // ── Config ───────────────────────────────────────────────
 const API_KEY   = 'ff39cd9c-729e-40ac-b740-1cebec6226f9';
@@ -531,7 +531,7 @@ const VESS_BASE  = 'https://www.wsdot.wa.gov/ferries/api/vessels/rest';
 // Terminal IDs confirmed from WSDOT VesselWatch URL params
 const TERMINALS = {
   SEA: { id: 7, name: 'Seattle',           abbrev: 'SEA', lat: 47.60328, lng: -122.33787 },
-  BI:  { id: 3, name: 'Bainbridge Island', abbrev: 'BI',  lat: 47.62375, lng: -122.51044 },
+  BI:  { id: 3, name: 'Bainbridge Island', abbrev: 'BBI', lat: 47.62375, lng: -122.51044 },
 };
 
 
@@ -1021,25 +1021,25 @@ function renderSchedule() {
   if (direction === 'SEA-BI') {
     if (atDock) {
       seaLabel = 'DEPARTS SEA'; seaTime = next.depart; seaPrimary = true;
-      biLabel  = 'ARRIVES BI';  biTime  = next.arrive; biPrimary  = false;
+      biLabel  = 'ARRIVES BBI'; biTime  = next.arrive; biPrimary  = false;
     } else if (lvApproaching) {
-      // Vessel sailing BI→SEA, approaching SEA for upcoming SEA→BI departure
-      biLabel  = 'DEPARTED BI'; biTime  = actualDepart || next.depart; biPrimary  = false;
-      seaLabel = isArriving ? 'ARRIVED SEA' : 'ARRIVES SEA'; seaTime = approachEta; seaPrimary = true;
+      // Vessel sailing BBI→SEA, approaching SEA for upcoming SEA→BBI departure
+      biLabel  = 'DEPARTED BBI'; biTime  = actualDepart || next.depart; biPrimary  = false;
+      seaLabel = 'ARRIVES SEA'; seaTime = approachEta; seaPrimary = true;
     } else {
       seaLabel = 'DEPARTED SEA'; seaTime = actualDepart; seaPrimary = false;
-      biLabel  = isArriving ? 'ARRIVED BI' : 'ARRIVES BI'; biTime = arriveTime; biPrimary = true;
+      biLabel  = 'ARRIVES BBI'; biTime = arriveTime; biPrimary = true;
     }
   } else {
     if (atDock) {
-      biLabel = 'DEPARTS BI'; biTime = next.depart; biPrimary = true;
+      biLabel = 'DEPARTS BBI'; biTime = next.depart; biPrimary = true;
       seaLabel = 'ARRIVES SEA'; seaTime = next.arrive; seaPrimary = false;
     } else if (lvApproaching) {
       seaLabel = 'DEPARTED SEA'; seaTime = actualDepart || next.depart; seaPrimary = false;
-      biLabel  = isArriving ? 'ARRIVED BI' : 'ARRIVES BI'; biTime = approachEta; biPrimary = true;
+      biLabel  = 'ARRIVES BBI'; biTime = approachEta; biPrimary = true;
     } else {
-      biLabel = 'DEPARTED BI'; biTime = actualDepart; biPrimary = false;
-      seaLabel = isArriving ? 'ARRIVED SEA' : 'ARRIVES SEA'; seaTime = arriveTime; seaPrimary = true;
+      biLabel = 'DEPARTED BBI'; biTime = actualDepart; biPrimary = false;
+      seaLabel = 'ARRIVES SEA'; seaTime = arriveTime; seaPrimary = true;
     }
   }
   const { t: seaT, ap: seaAp } = splitTime(seaTime);
@@ -1064,7 +1064,7 @@ function renderSchedule() {
   const barPct    = computeBarPct();
   const ferryRot  = ((direction === 'SEA-BI') !== lvApproaching) ? 90 : -90;
   const vesselClr = getVesselColor(next.vessel);
-  const ferryPinSvg = `<svg width="22" height="22" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"
+  const ferryPinSvg = `<svg width="34" height="34" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"
     style="transform:rotate(${ferryRot}deg);overflow:visible;display:block">
     <path fill="currentColor" d="M32 5 C 40 13, 44 21, 44 29 L 44 54 C 44 57, 42 59, 39 59 L 25 59 C 22 59, 20 57, 20 54 L 20 29 C 20 21, 24 13, 32 5 Z"/>
     <path fill="#0b1a2e" fill-opacity="0.32" d="M32 13 C 37.5 19, 40 25, 40 30 L 40 51 C 40 53, 38.5 54.5, 36.5 54.5 L 27.5 54.5 C 25.5 54.5, 24 53, 24 51 L 24 30 C 24 25, 26.5 19, 32 13 Z"/>
@@ -1139,7 +1139,7 @@ function renderSchedule() {
             </div>
             <div class="nc-track-ep-wrap">
               <div class="ep-dot ${biDotCls}"><div class="ep-core"></div><div class="ep-ring"></div></div>
-              <span class="nc-track-label">BI</span>
+              <span class="nc-track-label">BBI</span>
             </div>
           </div>
           ${footerText ? `<div class="nc-next-line">${footerText}</div>` : ''}
@@ -1307,8 +1307,8 @@ function initMapPopup() {
 
   function hide() { popup.classList.remove('visible'); }
 
-  markersG.addEventListener('click',    e => { const g = e.target.closest('[data-vname]'); if (g) { e.stopPropagation(); show(g.dataset.vname); } });
-  markersG.addEventListener('touchend', e => { const g = e.target.closest('[data-vname]'); if (g) { e.preventDefault(); e.stopPropagation(); show(g.dataset.vname); } });
+  markersG.addEventListener('click',    e => { const g = e.target.closest('[data-vname]'); if (g) { e.stopPropagation(); show(g.getAttribute('data-vname')); } });
+  markersG.addEventListener('touchend', e => { const g = e.target.closest('[data-vname]'); if (g) { e.preventDefault(); e.stopPropagation(); show(g.getAttribute('data-vname')); } });
   document.getElementById('map-popup-close')?.addEventListener('click', hide);
   document.getElementById('ferry-map-svg')?.addEventListener('click', e => { if (!e.target.closest('[data-vname]')) hide(); });
 }
@@ -1372,12 +1372,15 @@ function updateMap() {
   function updateTermLabel(termId, vessels, cX, cW, cTX, dotCY) {
     const g = document.getElementById(termId);
     if (!g) return;
-    const extra = vessels.length * 14;
+    const N = vessels.length;
+    const rightDotCX = cTX - 22;
+    const leftDotCX  = rightDotCX - (N > 0 ? (N - 1) * 11 : 0);
+    const extra = N > 0 ? Math.max(0, cX - (leftDotCX - 7)) : 0;
     g.querySelector('rect').setAttribute('x',    String(cX - extra));
     g.querySelector('rect').setAttribute('width', String(cW + extra));
     g.querySelector('text').setAttribute('x',    String(cTX));
     g.querySelector('g').innerHTML = vessels.map((v, i) => {
-      const c = getVesselColor(v.VesselName), cx = cX - extra + 7 + i * 14, d = (i * 0.4).toFixed(1);
+      const c = getVesselColor(v.VesselName), cx = rightDotCX - (N - 1 - i) * 11, d = (i * 0.4).toFixed(1);
       return `<circle cx="${cx}" cy="${dotCY}" r="3.5" fill="${c}">` +
         `<animate attributeName="r" values="3;5;3" dur="2.2s" begin="${d}s" repeatCount="indefinite"/>` +
         `<animate attributeName="opacity" values="1;0.45;1" dur="2.2s" begin="${d}s" repeatCount="indefinite"/></circle>`;
