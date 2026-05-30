@@ -312,8 +312,25 @@
 
     /* ── Map ─────────────────────────────────────────────────── */
     .map-section { margin: 0 16px; }
-    .map-frame { border-radius: var(--radius); border: 1px solid var(--border); height: 220px; position: relative; overflow: hidden; }
-    #ferry-map-svg { display: block; width: 100%; height: 100%; }
+    .map-frame { border-radius: var(--radius); border: 1px solid var(--border); height: 220px; position: relative; overflow: hidden; cursor: grab; }
+    .map-frame:active { cursor: grabbing; }
+    #ferry-map-svg { display: block; width: 100%; height: 100%; touch-action: none; user-select: none; }
+    .map-popup {
+      position: absolute; top: 8px; left: 8px; z-index: 10;
+      background: rgba(11,26,46,0.93); backdrop-filter: blur(8px);
+      border: 1px solid rgba(255,255,255,0.1); border-radius: 10px;
+      padding: 9px 12px 9px 12px; min-width: 134px;
+      box-shadow: 0 6px 20px rgba(0,0,0,.5);
+      opacity: 0; transition: opacity .15s; pointer-events: none;
+    }
+    .map-popup.visible { opacity: 1; pointer-events: auto; }
+    .map-popup-name { font-size: 12px; font-weight: 700; margin-bottom: 4px; padding-right: 18px; }
+    .map-popup-row { font-size: 11px; color: var(--mid); line-height: 1.75; }
+    .map-popup-row b { color: var(--white); font-weight: 600; }
+    .map-popup-close {
+      position: absolute; top: 6px; right: 9px; font-size: 15px;
+      color: var(--mid); cursor: pointer; line-height: 1;
+    }
 
 
     /* ── Vessel chips ────────────────────────────────────────── */
@@ -448,20 +465,31 @@
                 fill="none" stroke="#8099C0" stroke-opacity="0.5" stroke-width="2.5"
                 stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="4 8"/>
 
-          <rect x="547" y="416" width="44" height="22" rx="5"
-                fill="#07111e" stroke="#60a5fa" stroke-width="1.5"/>
-          <text x="569" y="431" text-anchor="middle"
-                font-family="-apple-system,system-ui,sans-serif"
-                font-size="14" font-weight="700" fill="#60a5fa">BI</text>
+          <g id="term-bi">
+            <rect x="541" y="416" width="56" height="22" rx="5"
+                  fill="#07111e" stroke="#60a5fa" stroke-width="1.5"/>
+            <g id="term-dots-bi"></g>
+            <text x="578" y="431" text-anchor="middle"
+                  font-family="-apple-system,system-ui,sans-serif"
+                  font-size="14" font-weight="700" fill="#60a5fa">BI</text>
+          </g>
 
-          <rect x="848" y="460" width="52" height="22" rx="5"
-                fill="#07111e" stroke="#00c9a7" stroke-width="1.5"/>
-          <text x="874" y="475" text-anchor="middle"
-                font-family="-apple-system,system-ui,sans-serif"
-                font-size="14" font-weight="700" fill="#00c9a7">SEA</text>
+          <g id="term-sea">
+            <rect x="844" y="460" width="66" height="22" rx="5"
+                  fill="#07111e" stroke="#00c9a7" stroke-width="1.5"/>
+            <g id="term-dots-sea"></g>
+            <text x="884" y="475" text-anchor="middle"
+                  font-family="-apple-system,system-ui,sans-serif"
+                  font-size="14" font-weight="700" fill="#00c9a7">SEA</text>
+          </g>
 
           <g id="vessel-markers"></g>
         </svg>
+        <div id="map-popup" class="map-popup">
+          <span class="map-popup-close" id="map-popup-close">&times;</span>
+          <div class="map-popup-name" id="map-popup-name"></div>
+          <div id="map-popup-body"></div>
+        </div>
       </div>
     </div>
 
@@ -486,7 +514,7 @@
 'use strict';
 
 // ── Build version — bump this string on every deploy ─────
-const BUILD = 'r65';
+const BUILD = 'r66';
 
 // ── Config ───────────────────────────────────────────────
 const API_KEY   = 'ff39cd9c-729e-40ac-b740-1cebec6226f9';
@@ -1238,58 +1266,196 @@ function renderVesselStrip() {
 
 function initMap() {}
 
+function initMapInteraction() {
+  const svg = document.getElementById('ferry-map-svg');
+  if (!svg) return;
+  const orig = { x: 450, y: 370, w: 480, h: 260 };
+  let vb = { ...orig };
+  const MIN_W = orig.w / 3, MAX_W = orig.w;
 
+  function applyVB() {
+    svg.setAttribute('viewBox', `${vb.x.toFixed(1)} ${vb.y.toFixed(1)} ${vb.w.toFixed(1)} ${vb.h.toFixed(1)}`);
+  }
+  function clamp() {
+    const m = 80;
+    vb.x = Math.max(orig.x - m, Math.min(orig.x + orig.w + m - vb.w, vb.x));
+    vb.y = Math.max(orig.y - m, Math.min(orig.y + orig.h + m - vb.h, vb.y));
+  }
+  function toSVG(cx, cy) {
+    const r = svg.getBoundingClientRect();
+    return { x: vb.x + (cx - r.left) / r.width * vb.w, y: vb.y + (cy - r.top) / r.height * vb.h };
+  }
+  function zoom(factor, pivotCX, pivotCY) {
+    const newW = Math.max(MIN_W, Math.min(MAX_W, vb.w * factor));
+    const newH = newW * (orig.h / orig.w);
+    const p = toSVG(pivotCX, pivotCY);
+    vb.x = p.x - (p.x - vb.x) * (newW / vb.w);
+    vb.y = p.y - (p.y - vb.y) * (newH / vb.h);
+    vb.w = newW; vb.h = newH;
+    clamp(); applyVB();
+  }
+
+  let lastTouches = null, wasPinching = false;
+  function tArr(e) { return [...e.touches].map(t => ({ clientX: t.clientX, clientY: t.clientY })); }
+  function tdist(a, b) { return Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY); }
+
+  svg.addEventListener('touchstart', e => {
+    lastTouches = tArr(e);
+    if (e.touches.length >= 2) { wasPinching = true; e.preventDefault(); }
+  }, { passive: false });
+
+  svg.addEventListener('touchmove', e => {
+    e.preventDefault();
+    const cur = tArr(e);
+    if (!lastTouches) { lastTouches = cur; return; }
+    if (cur.length >= 2 && lastTouches.length >= 2) {
+      const d0 = tdist(lastTouches[0], lastTouches[1]);
+      const d1 = tdist(cur[0], cur[1]);
+      const m0cx = (lastTouches[0].clientX + lastTouches[1].clientX) / 2;
+      const m0cy = (lastTouches[0].clientY + lastTouches[1].clientY) / 2;
+      const m1cx = (cur[0].clientX + cur[1].clientX) / 2;
+      const m1cy = (cur[0].clientY + cur[1].clientY) / 2;
+      zoom(d0 / d1, m0cx, m0cy);
+      const r = svg.getBoundingClientRect();
+      vb.x -= (m1cx - m0cx) / r.width  * vb.w;
+      vb.y -= (m1cy - m0cy) / r.height * vb.h;
+      clamp(); applyVB();
+    } else if (cur.length === 1 && lastTouches.length >= 1 && !wasPinching) {
+      const r = svg.getBoundingClientRect();
+      vb.x -= (cur[0].clientX - lastTouches[0].clientX) / r.width  * vb.w;
+      vb.y -= (cur[0].clientY - lastTouches[0].clientY) / r.height * vb.h;
+      clamp(); applyVB();
+    }
+    lastTouches = cur;
+  }, { passive: false });
+
+  svg.addEventListener('touchend', e => {
+    if (e.touches.length < 2) wasPinching = false;
+    lastTouches = tArr(e);
+  });
+
+  svg.addEventListener('wheel', e => {
+    e.preventDefault();
+    zoom(e.deltaY > 0 ? 1.12 : 0.88, e.clientX, e.clientY);
+  }, { passive: false });
+
+  let drag = null;
+  svg.addEventListener('mousedown', e => {
+    drag = { sx: e.clientX, sy: e.clientY, vbx: vb.x, vby: vb.y };
+    e.preventDefault();
+  });
+  window.addEventListener('mousemove', e => {
+    if (!drag) return;
+    const r = svg.getBoundingClientRect();
+    vb.x = drag.vbx - (e.clientX - drag.sx) / r.width  * vb.w;
+    vb.y = drag.vby - (e.clientY - drag.sy) / r.height * vb.h;
+    clamp(); applyVB();
+  });
+  window.addEventListener('mouseup', () => { drag = null; });
+
+  let lastTap = 0;
+  svg.addEventListener('touchend', e => {
+    if (e.changedTouches.length === 1 && !wasPinching) {
+      const now = Date.now();
+      if (now - lastTap < 300) { vb = { ...orig }; applyVB(); }
+      lastTap = now;
+    }
+  });
+  svg.addEventListener('dblclick', () => { vb = { ...orig }; applyVB(); });
+}
+
+function initMapPopup() {
+  const markersG = document.getElementById('vessel-markers');
+  const popup    = document.getElementById('map-popup');
+  if (!markersG || !popup) return;
+
+  function show(vname) {
+    const v = routeVessels().find(x => x.VesselName === vname);
+    if (!v) return;
+    const color = getVesselColor(vname);
+    document.getElementById('map-popup-name').textContent = vname;
+    document.getElementById('map-popup-name').style.color = color;
+    const from = v.DepartingTerminalID === TERMINALS.SEA.id ? 'Seattle' : 'Bainbridge';
+    const to   = v.ArrivingTerminalID  === TERMINALS.SEA.id ? 'Seattle' : 'Bainbridge';
+    const eta  = v.Eta ? parseWSDot(v.Eta) : null;
+    const mins = eta ? Math.round((eta - Date.now()) / 60000) : null;
+    const etaStr = eta ? `${fmtTime(eta)} (${mins > 0 ? mins + 'm' : 'now'})` : '—';
+    document.getElementById('map-popup-body').innerHTML =
+      `<div class="map-popup-row"><b>${from}</b> → <b>${to}</b></div>` +
+      `<div class="map-popup-row">ETA&nbsp;<b>${etaStr}</b></div>`;
+    popup.classList.add('visible');
+  }
+
+  function hide() { popup.classList.remove('visible'); }
+
+  markersG.addEventListener('click',    e => { const g = e.target.closest('[data-vname]'); if (g) { e.stopPropagation(); show(g.dataset.vname); } });
+  markersG.addEventListener('touchend', e => { const g = e.target.closest('[data-vname]'); if (g) { e.preventDefault(); e.stopPropagation(); show(g.dataset.vname); } });
+  document.getElementById('map-popup-close')?.addEventListener('click', hide);
+  document.getElementById('ferry-map-svg')?.addEventListener('click', e => { if (!e.target.closest('[data-vname]')) hide(); });
+}
 
 function updateMap() {
   const routePath = document.getElementById('route-path');
   const markersG  = document.getElementById('vessel-markers');
+  const dotsBi    = document.getElementById('term-dots-bi');
+  const dotsSea   = document.getElementById('term-dots-sea');
   if (!routePath || !markersG) return;
 
   const L  = routePath.getTotalLength();
   const rv = routeVessels();
   const parts = [];
+  const dockedAtBI  = [];
+  const dockedAtSEA = [];
 
-  rv.forEach((v, idx) => {
-    const color  = getVesselColor(v.VesselName);
-    const seaBI  = v.DepartingTerminalID === TERMINALS.SEA.id;
-    let t;
+  rv.forEach(v => {
+    const color = getVesselColor(v.VesselName);
+    const seaBI = v.DepartingTerminalID === TERMINALS.SEA.id;
+
     if (v.AtDock) {
-      const atSEA = v.DepartingTerminalID === TERMINALS.SEA.id;
-      const base  = atSEA ? L : 0;
-      // Spread multiple docked vessels slightly so they don't stack
-      t = Math.max(0, Math.min(L, base + (atSEA ? -1 : 1) * idx * 30));
-    } else {
-      const left = parseWSDot(v.LeftDock);
-      const eta  = v.Eta ? parseWSDot(v.Eta) : null;
-      if (left && eta) {
-        const prog = Math.max(0, Math.min(1, (Date.now() - left) / (eta - left)));
-        t = seaBI ? L * (1 - prog) : L * prog;
-      } else {
-        t = L / 2;
-      }
+      (seaBI ? dockedAtSEA : dockedAtBI).push(v);
+      return;
     }
+
+    const left = parseWSDot(v.LeftDock);
+    const eta  = v.Eta ? parseWSDot(v.Eta) : null;
+    let t;
+    if (left && eta) {
+      const prog = Math.max(0, Math.min(1, (Date.now() - left) / (eta - left)));
+      t = seaBI ? L * (1 - prog) : L * prog;
+    } else {
+      t = L / 2;
+    }
+
     const pt = routePath.getPointAtLength(t);
     const p1 = routePath.getPointAtLength(Math.max(0, t - 1));
     const p2 = routePath.getPointAtLength(Math.min(L, t + 1));
-    // Path goes BI→SEA (left→right), so SEA-departing vessels need a 180° flip
     const rawAng = Math.atan2(p2.y - p1.y, p2.x - p1.x) * 180 / Math.PI + 90;
     const ang    = seaBI ? rawAng + 180 : rawAng;
-    const glow   = v.AtDock ? '26' : '55';
-    const shadow = v.AtDock
-      ? `drop-shadow(0 0 5px ${color}66) drop-shadow(0 0 12px ${color}33)`
-      : `drop-shadow(0 0 7px ${color}bb) drop-shadow(0 0 18px ${color}66)`;
+    const sf = `drop-shadow(0 0 6px color-mix(in srgb,${color} 55%,transparent)) drop-shadow(0 0 14px color-mix(in srgb,${color} 28%,transparent))`;
     parts.push(
-      `<g transform="translate(${pt.x.toFixed(1)},${pt.y.toFixed(1)})">` +
-      `<circle r="22" fill="${color}${glow}"/>` +
-      `<g transform="rotate(${ang.toFixed(1)}) translate(-20,-20)">` +
-      `<svg width="40" height="40" viewBox="0 0 64 64" overflow="visible" style="filter:${shadow}">` +
-      `<path fill="${color}" d="M32 5C40 13,44 21,44 29L44 54C44 57,42 59,39 59L25 59C22 59,20 57,20 54L20 29C20 21,24 13,32 5Z"/>` +
+      `<g transform="translate(${pt.x.toFixed(1)},${pt.y.toFixed(1)})" data-vname="${v.VesselName}" style="cursor:pointer">` +
+      `<g transform="rotate(${ang.toFixed(1)}) translate(-20,-20)" style="color:${color};filter:${sf}">` +
+      `<svg width="40" height="40" viewBox="0 0 64 64" overflow="visible" style="display:block">` +
+      `<path fill="currentColor" d="M32 5C40 13,44 21,44 29L44 54C44 57,42 59,39 59L25 59C22 59,20 57,20 54L20 29C20 21,24 13,32 5Z"/>` +
       `<path fill="#0b1a2e" fill-opacity=".32" d="M32 13C37.5 19,40 25,40 30L40 51C40 53,38.5 54.5,36.5 54.5L27.5 54.5C25.5 54.5,24 53,24 51L24 30C24 25,26.5 19,32 13Z"/>` +
       `<circle cx="32" cy="24" r="3.4" fill="#0b1a2e"/></svg></g></g>`
     );
   });
 
   markersG.innerHTML = parts.join('');
+
+  function dockDots(vessels, baseCX, cy) {
+    return vessels.map((v, i) => {
+      const c = getVesselColor(v.VesselName);
+      const cx = baseCX + i * 12;
+      const d  = (i * 0.4).toFixed(1);
+      return `<circle cx="${cx}" cy="${cy}" r="3.5" fill="${c}">` +
+        `<animate attributeName="r" values="3;5;3" dur="2.2s" begin="${d}s" repeatCount="indefinite"/>` +
+        `<animate attributeName="opacity" values="1;0.45;1" dur="2.2s" begin="${d}s" repeatCount="indefinite"/></circle>`;
+    }).join('');
+  }
+  if (dotsBi)  dotsBi.innerHTML  = dockDots(dockedAtBI,  551, 427);
+  if (dotsSea) dotsSea.innerHTML = dockDots(dockedAtSEA, 858, 471);
 }
 
 // ── Status bar ────────────────────────────────────────────
@@ -1379,6 +1545,8 @@ setInterval(() => refresh(true),   10 * 60 * 1000);
 document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('buildTag').textContent = BUILD;
   initMap();
+  initMapInteraction();
+  initMapPopup();
 
   // Render cached schedule immediately so the UI appears without waiting for API
   const bootCache = getCachedSchedule();
