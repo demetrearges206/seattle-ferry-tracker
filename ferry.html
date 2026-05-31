@@ -274,21 +274,27 @@
     /* ── Upcoming list ───────────────────────────────────────── */
     .upcoming-list { margin: 0 16px; border-radius: var(--radius); border: 1px solid var(--border); overflow: hidden; }
     .sail-row {
-      display: flex; justify-content: space-between;
+      display: grid; grid-template-columns: 1fr auto auto;
+      align-items: center; gap: 12px;
       padding: 13px 16px; background: var(--navy-card);
       border-bottom: 1px solid var(--border);
     }
     .sail-row:last-child { border-bottom: none; }
-    .sail-col { display: flex; flex-direction: column; gap: 4px; }
+    .sail-main { display: flex; flex-direction: column; gap: 4px; }
     .sail-vessel { font-size: 10.8px; font-weight: 700; color: var(--dim); line-height: 13px; }
-    .sail-eta-lbl { font-size: 10.8px; font-weight: 700; color: var(--dim); line-height: 13px; }
     .sail-dep-time { display: flex; align-items: baseline; }
     .sail-dep-t { font-size: 14.1px; font-weight: 700; color: var(--white); line-height: 17px; }
     .sail-ampm { font-size: 11px; font-weight: 700; color: var(--white); }
-    .sail-arr-row { display: flex; align-items: baseline; gap: 2px; }
+    .sail-eta { display: flex; align-items: baseline; gap: 2px; white-space: nowrap; }
     .sail-arrow { font-size: 15px; font-weight: 400; color: var(--mid); line-height: 18px; }
     .sail-arr-t { font-size: 14.1px; font-weight: 700; color: var(--mid); line-height: 17px; }
     .sail-arr-ampm { font-size: 11px; font-weight: 700; color: var(--mid); }
+    .sail-pill {
+      font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 8px;
+      background: rgba(255,255,255,0.07); color: var(--mid); white-space: nowrap;
+    }
+    .sail-pill.now  { background: rgba(248,81,73,0.15);  color: var(--red); }
+    .sail-pill.soon { background: rgba(0,201,167,0.12);  color: var(--teal); }
     .sail-badge { font-size: 10px; font-weight: 700; padding: 3px 8px; border-radius: 8px; white-space: nowrap; flex-shrink: 0; }
     .delay-tag { display: inline-block; padding: 2px 7px; border-radius: 10px; font-size: 10px; font-weight: 700; letter-spacing: 0.02em; white-space: nowrap; background: rgba(255,84,73,0.15); color: var(--red); }
     .delay-tag.early { background: rgba(0,201,167,0.12); color: var(--teal); }
@@ -445,7 +451,7 @@
 
     <div class="map-section">
       <div class="map-frame">
-        <svg id="ferry-map-svg" viewBox="490 385 415 224"
+        <svg id="ferry-map-svg" viewBox="516 385 415 224"
              preserveAspectRatio="xMidYMid meet"
              xmlns="http://www.w3.org/2000/svg" style="display:block;width:100%;height:100%">
           <rect width="1265" height="1181" transform="translate(0 0.390015)" fill="#060F1F"/>
@@ -472,19 +478,19 @@
                 stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="4 8"/>
 
           <g id="term-bi">
-            <rect x="547" y="416" width="44" height="22" rx="5"
+            <rect x="547" y="416" width="36" height="22" rx="5"
                   fill="#07111e" stroke="#60a5fa" stroke-width="1.5"/>
             <g id="term-dots-bi"></g>
-            <text x="569" y="431" text-anchor="middle"
+            <text x="565" y="431" text-anchor="middle"
                   font-family="-apple-system,system-ui,sans-serif"
                   font-size="14" font-weight="700" fill="#60a5fa">BBI</text>
           </g>
 
           <g id="term-sea">
-            <rect x="848" y="460" width="52" height="22" rx="5"
+            <rect x="861" y="460" width="38" height="22" rx="5"
                   fill="#07111e" stroke="#00c9a7" stroke-width="1.5"/>
             <g id="term-dots-sea"></g>
-            <text x="874" y="475" text-anchor="middle"
+            <text x="880" y="475" text-anchor="middle"
                   font-family="-apple-system,system-ui,sans-serif"
                   font-size="14" font-weight="700" fill="#00c9a7">SEA</text>
           </g>
@@ -520,7 +526,7 @@
 'use strict';
 
 // ── Build version — bump this string on every deploy ─────
-const BUILD = 'r70';
+const BUILD = 'r71';
 
 // ── Config ───────────────────────────────────────────────
 const API_KEY   = 'ff39cd9c-729e-40ac-b740-1cebec6226f9';
@@ -960,7 +966,7 @@ function renderSchedule() {
   }
 
   const next = upcoming[0];
-  const rest = upcoming.slice(0, 3);
+  const rest = upcoming.slice(1, 4);
   const lv = getLiveVessel(next.vessel);
 
   // Only use live data if the vessel is heading toward the correct destination for this tab
@@ -1174,16 +1180,15 @@ function renderSchedule() {
     rest.forEach(d => {
       const { t, ap } = splitTime(d.depart);
       const { t: at, ap: aap } = splitTime(d.arrive);
+      const { text: cdText, cls: cdCls } = countdownInfo(d.depart);
       html += `
         <div class="sail-row">
-          <div class="sail-col">
+          <div class="sail-main">
             <div class="sail-vessel">${d.vessel}</div>
             <div class="sail-dep-time"><span class="sail-dep-t">${t}</span><span class="sail-ampm"> ${ap}</span></div>
           </div>
-          <div class="sail-col">
-            <div class="sail-eta-lbl">ETA</div>
-            <div class="sail-arr-row"><span class="sail-arrow">→</span><span class="sail-arr-t">${at}</span><span class="sail-arr-ampm"> ${aap}</span></div>
-          </div>
+          <div class="sail-eta"><span class="sail-arrow">→</span><span class="sail-arr-t">${at}</span><span class="sail-arr-ampm"> ${aap}</span></div>
+          <span class="sail-pill ${cdCls}">${cdText}</span>
         </div>`;
     });
     html += `</div>`;
@@ -1405,8 +1410,8 @@ function updateMap() {
         `<animate attributeName="opacity" values="1;0.45;1" dur="2.2s" begin="${d}s" repeatCount="indefinite"/></circle>`;
     }).join('');
   }
-  updateTermLabel('term-bi',  dockedAtBI,  547, 44, 569, 427);
-  updateTermLabel('term-sea', dockedAtSEA, 848, 52, 874, 471);
+  updateTermLabel('term-bi',  dockedAtBI,  547, 36, 565, 427);
+  updateTermLabel('term-sea', dockedAtSEA, 861, 38, 880, 471);
 }
 
 // ── Status bar ────────────────────────────────────────────
