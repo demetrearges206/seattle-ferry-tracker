@@ -520,7 +520,7 @@
 'use strict';
 
 // ── Build version — bump this string on every deploy ─────
-const BUILD = 'r69';
+const BUILD = 'r70';
 
 // ── Config ───────────────────────────────────────────────
 const API_KEY   = 'ff39cd9c-729e-40ac-b740-1cebec6226f9';
@@ -975,6 +975,9 @@ function renderSchedule() {
     lv.DepartingTerminalID === dirArr && lv.ArrivingTerminalID === dirDep;
   const approachEta = lvApproaching ? parseWSDot(lv.Eta) : null;
 
+  // Vessel is docked but at the ARRIVAL terminal (wrong side) — needs to cross first
+  const lvAtOther = lv && lv.AtDock && lv.DepartingTerminalID === dirArr;
+
   // ── Determine card state ───────────────────────────────
   // Check OOS without the InService filter getLiveVessel applies
   const lvAny = Array.isArray(vesselList) ? vesselList.find(v => v.VesselName === next.vessel) : null;
@@ -1020,26 +1023,38 @@ function renderSchedule() {
   let biLabel, biTime, biPrimary;
   if (direction === 'SEA-BI') {
     if (atDock) {
-      seaLabel = 'DEPARTS SEA'; seaTime = next.depart; seaPrimary = true;
-      biLabel  = 'ARRIVES BBI'; biTime  = next.arrive; biPrimary  = false;
+      if (lvAtOther) {
+        // Vessel docked at BBI (will cross to SEA first before this SEA→BBI trip)
+        biLabel  = 'AT BBI';      biTime  = null;         biPrimary  = false;
+        seaLabel = 'DEPARTS SEA'; seaTime = next.depart;  seaPrimary = true;
+      } else {
+        seaLabel = 'DEPARTS SEA'; seaTime = next.depart; seaPrimary = true;
+        biLabel  = 'ARRIVES BBI'; biTime  = next.arrive; biPrimary  = false;
+      }
     } else if (lvApproaching) {
       // Vessel sailing BBI→SEA, approaching SEA for upcoming SEA→BBI departure
       biLabel  = 'DEPARTED BBI'; biTime  = actualDepart || next.depart; biPrimary  = false;
-      seaLabel = 'ARRIVES SEA'; seaTime = approachEta; seaPrimary = true;
+      seaLabel = 'ARRIVES SEA';  seaTime = approachEta;                 seaPrimary = true;
     } else {
       seaLabel = 'DEPARTED SEA'; seaTime = actualDepart; seaPrimary = false;
-      biLabel  = 'ARRIVES BBI'; biTime = arriveTime; biPrimary = true;
+      biLabel  = 'ARRIVES BBI';  biTime  = arriveTime;   biPrimary  = true;
     }
   } else {
     if (atDock) {
-      biLabel = 'DEPARTS BBI'; biTime = next.depart; biPrimary = true;
-      seaLabel = 'ARRIVES SEA'; seaTime = next.arrive; seaPrimary = false;
+      if (lvAtOther) {
+        // Vessel docked at SEA (will cross to BBI first before this BBI→SEA trip)
+        seaLabel = 'AT SEA';       seaTime = null;         seaPrimary = false;
+        biLabel  = 'DEPARTS BBI';  biTime  = next.depart;  biPrimary  = true;
+      } else {
+        biLabel  = 'DEPARTS BBI'; biTime  = next.depart; biPrimary  = true;
+        seaLabel = 'ARRIVES SEA'; seaTime = next.arrive;  seaPrimary = false;
+      }
     } else if (lvApproaching) {
       seaLabel = 'DEPARTED SEA'; seaTime = actualDepart || next.depart; seaPrimary = false;
-      biLabel  = 'ARRIVES BBI'; biTime = approachEta; biPrimary = true;
+      biLabel  = 'ARRIVES BBI';  biTime  = approachEta;                 biPrimary  = true;
     } else {
-      biLabel = 'DEPARTED BBI'; biTime = actualDepart; biPrimary = false;
-      seaLabel = 'ARRIVES SEA'; seaTime = arriveTime; seaPrimary = true;
+      biLabel  = 'DEPARTED BBI'; biTime  = actualDepart; biPrimary  = false;
+      seaLabel = 'ARRIVES SEA';  seaTime = arriveTime;   seaPrimary = true;
     }
   }
   const { t: seaT, ap: seaAp } = splitTime(seaTime);
@@ -1075,12 +1090,16 @@ function renderSchedule() {
   // destIsBI: true when vessel is heading toward BI (XOR with lvApproaching which reverses it)
   const destIsBI  = isSeaBI !== Boolean(lvApproaching);
   const seaDotCls = cardState === 'at-dock'
-    ? (isSeaBI ? 'ep-dot--docked' : 'ep-dot--hollow')
+    ? (lvAtOther
+        ? (isSeaBI ? 'ep-dot--hollow' : 'ep-dot--docked')   // vessel at other terminal
+        : (isSeaBI ? 'ep-dot--docked' : 'ep-dot--hollow'))  // vessel at dep terminal
     : cardState === 'fallback'
     ? 'ep-dot--hollow'
     : (destIsBI ? 'ep-dot--hollow' : 'ep-dot--destination');
   const biDotCls  = cardState === 'at-dock'
-    ? (isSeaBI ? 'ep-dot--hollow' : 'ep-dot--docked')
+    ? (lvAtOther
+        ? (isSeaBI ? 'ep-dot--docked' : 'ep-dot--hollow')   // vessel at other terminal
+        : (isSeaBI ? 'ep-dot--hollow' : 'ep-dot--docked'))  // vessel at dep terminal
     : cardState === 'fallback'
     ? 'ep-dot--hollow'
     : (destIsBI ? 'ep-dot--destination' : 'ep-dot--hollow');
