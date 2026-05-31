@@ -1,33 +1,33 @@
-# WSDOT Vessel Snapshot — 2026-05-29
+# WSDOT Vessel Snapshot — 2026-05-31
 
-Fetched at: 2026-05-29T15:27:52.409020+00:00
+Fetched at: 2026-05-31T18:22:49.093341+00:00
 
 
 ## Live Vessel Locations (21 total)
 
 | Vessel | InService | AtDock | From | To | Speed | ETA |
 |--------|-----------|--------|------|----|-------|-----|
-| Cathlamet | ✓ | ✓ | Fauntleroy | Vashon Island | 0 kts | — |
-| Chelan | ✓ | ✓ | Anacortes | Friday Harbor | 0 kts | — |
-| Chetzemoka | ✓ | ✓ | Point Defiance | Tahlequah | 0 kts | — |
-| Chimacum | ✓ | — | Seattle | Bremerton | 16.5 kts | /Date(1780070700000-0700)/ |
+| Cathlamet | ✓ | ✓ | Vashon Island | — | 0.1 kts | — |
+| Chelan | ✓ | — | Friday Harbor | Anacortes | 15.6 kts | /Date(1780252080000-0700)/ |
+| Chetzemoka | ✓ | ✓ | Tahlequah | Point Defiance | 0 kts | — |
+| Chimacum | ✓ | ✓ | Bremerton | Seattle | 0 kts | — |
 | Issaquah | ✗ | ✓ | Vigor Shipyard | — | 0 kts | — |
 | Kaleetan | ✗ | ✓ | Eagle Harbor | — | 0 kts | — |
-| Kennewick | ✓ | ✓ | Port Townsend | Coupeville  | 0 kts | — |
+| Kennewick | ✓ | — | Coupeville  | Port Townsend | 12.3 kts | /Date(1780252200000-0700)/ |
 | Kitsap | ✓ | ✓ | Clinton | Mukilteo | 0 kts | — |
-| Kittitas | ✓ | ✓ | Vashon Island | Southworth | 0 kts | — |
-| Puyallup | ✓ | ✓ | Bremerton | — | 0 kts | — |
-| Salish | ✓ | ✓ | Port Townsend | Coupeville  | 0 kts | — |
-| Samish | ✓ | — | Friday Harbor | Lopez Island | 15 kts | /Date(1780069740000-0700)/ |
-| Sealth | ✓ | — | Vashon Island | Fauntleroy | 6.3 kts | /Date(1780068840000-0700)/ |
-| Spokane | ✓ | ✓ | Kingston | Edmonds | 0 kts | — |
-| Suquamish | ✓ | — | Anacortes | Orcas Island | 4.2 kts | /Date(1780068540000-0700)/ |
-| Tacoma | ✓ | — | Bainbridge Island | Seattle | 1.2 kts | /Date(1780068480000-0700)/ |
+| Kittitas | ✓ | — | Southworth | Vashon Island | 9.1 kts | /Date(1780252020000-0700)/ |
+| Puyallup | ✓ | — | Bremerton | — | 16.3 kts | — |
+| Salish | ✓ | — | Port Townsend | Coupeville  | 12.9 kts | /Date(1780252260000-0700)/ |
+| Samish | ✓ | ✓ | Orcas Island | Lopez Island | 0 kts | — |
+| Sealth | ✓ | ✓ | Vashon Island | Fauntleroy | 0 kts | — |
+| Spokane | ✓ | — | Edmonds | Kingston | 16.4 kts | /Date(1780252260000-0700)/ |
+| Suquamish | ✓ | — | Anacortes | Friday Harbor | 14.5 kts | /Date(1780253340000-0700)/ |
+| Tacoma | ✓ | ✓ | Bainbridge Island | Seattle | 0.1 kts | — |
 | Tillikum | ✓ | ✓ | Friday Harbor | Orcas Island | 0 kts | — |
 | Tokitae | ✓ | ✓ | Mukilteo | Clinton | 0 kts | — |
-| Walla Walla | ✓ | ✓ | Edmonds | Kingston | 0 kts | — |
-| Wenatchee | ✓ | — | Seattle | Bainbridge Island | 9.7 kts | /Date(1780068720000-0700)/ |
-| Yakima | ✗ | ✓ | Eagle Harbor | — | 0.1 kts | — |
+| Walla Walla | ✓ | — | Kingston | Edmonds | 15.2 kts | /Date(1780252680000-0700)/ |
+| Wenatchee | ✓ | ✓ | Seattle | Bainbridge Island | 0 kts | — |
+| Yakima | ✗ | ✓ | Eagle Harbor | — | 0 kts | — |
 
 ## Vessel Fleet Info (21 vessels)
 
