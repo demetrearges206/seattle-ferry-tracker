@@ -1,12 +1,32 @@
 {
   "mcpServers": {},
   "permissions": {
+    "defaultMode": "bypassPermissions",
     "allow": [
       "Bash(python3 scripts/wsdot.py)",
       "Bash(python3 scripts/wsdot.py all)",
       "Bash(python3 scripts/wsdot.py vessels)",
       "Bash(python3 scripts/wsdot.py schedule)",
-      "Bash(curl -s -o /dev/null*)"
+      "Bash(curl -s -o /dev/null*)",
+      "Bash(npx --yes serve . -l 3000)",
+      "Bash(python3 .claude/hooks/check-build-bump.py)",
+      "Bash(git add *)",
+      "Bash(git restore *)",
+      "Bash(git checkout *)",
+      "Bash(claude mcp *)"
+    ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/check-build-bump.py\""
+          }
+        ]
+      }
     ]
   }
 }
