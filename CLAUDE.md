@@ -4,16 +4,17 @@
 
 Real-time WSDOT Seattle ↔ Bainbridge Island ferry tracker. Single deliverable: `ferry.html` — a fully self-contained HTML file with all CSS, JS, and Leaflet 1.9.4 inlined. No build step. Deployed to GitHub Pages at `https://demetrearges206.github.io/seattle-ferry-tracker/ferry.html`.
 
-## Current state (r57)
+## Current state (r73)
 
-- `const BUILD = 'r57'` in ferry.html — bump on every change
+- `const BUILD = 'r73'` in ferry.html — bump on every change
 - Inter font inlined as base64 at deploy time via `.github/workflows/pages.yml` (not CDN)
-- Direction toggle: `SEA-BI` (Seattle → Bainbridge) or `BI-SEA` (Bainbridge → Seattle)
+- Direction toggle: `SEA-BBI` (Seattle → Bainbridge) or `BBI-SEA` (Bainbridge → Seattle)
 - Featured card (`#schedFeatured`) renders above the Vessels/map section
-- Upcoming section (`#schedContent`) shows `upcoming.slice(0, 3)` — starts with the current active sailing
-- Vessel map markers: teardrop SVG icon, rotates by heading, per-vessel palette color with glow (dimmer when docked)
-- Progress track at bottom of featured card — SEA always left, BI always right; ferry icon moves along it
-- `lvApproaching` state: vessel on return leg toward our departure terminal shows sailing/arriving (not at-dock)
+- Upcoming section (`#schedContent`) shows `upcoming.slice(1, 4)` — skips the active sailing (already in featured card), shows next 3
+- Vessel map markers: teardrop SVG icon in inline SVG map, per-vessel palette color; Leaflet miniMap in vessel popup
+- Progress track at bottom of featured card — SEA always left, BBI always right; ferry icon moves along it
+- `lvApproaching` state: vessel on return leg toward departure terminal shows sailing/arriving (not at-dock)
+- `lvAtOther` state: vessel docked at the wrong terminal (arrival side) — card shows "AT BBI" or "AT SEA" with next scheduled departure
 
 ## File map
 
@@ -38,7 +39,7 @@ Real-time WSDOT Seattle ↔ Bainbridge Island ferry tracker. Single deliverable:
 
 **Branch issue:** Every code.claude.com session automatically assigns a feature branch (e.g. `claude/bold-volta-8GEoB`). The session environment instructs Claude to develop on that branch and open a PR. This conflicts with the project preference of always pushing directly to `main`.
 
-**Workaround:** Push directly to `main` using the GitHub MCP tool (`mcp__github__create_or_update_file`) rather than local `git push`. This bypasses the branch entirely. Use this for all changes so they go live immediately.
+**Workaround:** Use `git push origin HEAD:main` — this pushes the local commit to `main` regardless of what the local branch is named. The session's assigned branch is irrelevant. Changes go live in ~30s via GitHub Pages.
 
 **How to start a new cloud session:**
 1. Go to [code.claude.com](https://code.claude.com) and create a new session for the `demetrearges206/seattle-ferry-tracker` repo
@@ -136,8 +137,8 @@ apiUrl(base, path) → `${base}/${path}?apiaccesscode=${API_KEY}`
 **Terminal IDs:**
 ```js
 const TERMINALS = {
-  SEA: { id: 7,  name: 'Seattle',          abbrev: 'SEA' },
-  BI:  { id: 3,  name: 'Bainbridge Island', abbrev: 'BI'  },
+  SEA: { id: 7, name: 'Seattle',           abbrev: 'SEA', lat: 47.60328, lng: -122.33787 },
+  BI:  { id: 3, name: 'Bainbridge Island', abbrev: 'BBI', lat: 47.62375, lng: -122.51044 },
 };
 ```
 
@@ -236,29 +237,36 @@ let cdTimer = null;         // interval handle for 10s countdown ticks
 
 ## Featured card — detailed
 
-### `lvApproaching` logic
+### `lvApproaching` / `lvAtOther` logic
 
 ```js
 const dirDep = direction === 'SEA-BI' ? TERMINALS.SEA.id : TERMINALS.BI.id;
 const dirArr = direction === 'SEA-BI' ? TERMINALS.BI.id  : TERMINALS.SEA.id;
 
-const lvOnRoute     = lv && !lv.AtDock &&
+const lvOnRoute = lv && !lv.AtDock &&
   lv.DepartingTerminalID === dirDep && lv.ArrivingTerminalID === dirArr;
 
+// Vessel on return leg heading toward our departure terminal
 const lvApproaching = lv && !lv.AtDock && !lvOnRoute &&
   lv.DepartingTerminalID === dirArr && lv.ArrivingTerminalID === dirDep;
+
+// Vessel is docked at the ARRIVAL terminal (wrong side) — needs to cross first
+const lvAtOther = lv && lv.AtDock && lv.DepartingTerminalID === dirArr;
 ```
 
-When `lvApproaching`, the vessel is on its return leg heading toward our departure terminal. Show it as sailing/arriving rather than at-dock.
+`lvApproaching` shows sailing/arriving toward the departure terminal (e.g. Wenatchee returning to SEA before the 7:55 AM SEA→BBI sailing).  
+`lvAtOther` shows "AT BBI" or "AT SEA" — vessel is parked at the wrong end and must cross first.
 
 ### Card states
 
 | State | Condition | Pin position |
 |-------|-----------|-------------|
 | `fallback` | No live vessel | Hidden |
-| `at-dock` | `lv.AtDock` or no route match | 3% (SEA side) or 97% (BI side) |
+| `at-dock` | `lv.AtDock` or no route match | 3% (SEA side) or 97% (BBI side) |
 | `sailing` | Underway, ETA > 5 min | Along track |
 | `arriving` | Underway, ETA ≤ 5 min | Near arrival end |
+| `delayed` | Underway, ETA > 5 min late | Along track |
+| `oos` | `!lv.InService` | Hidden (shows scheduled times) |
 
 ### Progress track
 
@@ -269,36 +277,51 @@ When `lvApproaching`, the vessel is on its return leg heading toward our departu
 
 ### Column labels
 
-**SEA→BI tab:**
+SEA is always left, BBI always right regardless of direction tab.
 
-| State | SEA col (left) | BI col (right) |
-|-------|----------------|----------------|
-| `at-dock` | DEPARTS SEA + `next.depart` (primary) | ARRIVES BI + `next.arrive` |
-| `lvApproaching` | ARRIVES SEA + `approachEta` (primary) | DEPARTED BI + `actualDepart` |
-| `sailing`/`arriving` | DEPARTED SEA + `actualDepart` | ARRIVES BI + `arriveTime` (primary) |
+**SEA→BBI tab:**
 
-**BI→SEA tab:**
+| State | SEA col (left) | BBI col (right) |
+|-------|----------------|-----------------|
+| `at-dock` (vessel at SEA) | DEPARTS SEA + `next.depart` (primary) | ARRIVES BBI + `next.arrive` |
+| `at-dock` (`lvAtOther` — vessel at BBI) | DEPARTS SEA + `next.depart` (primary) | AT BBI |
+| `lvApproaching` | ARRIVES SEA + `approachEta` (primary) | DEPARTED BBI + `actualDepart` |
+| `sailing`/`arriving` | DEPARTED SEA + `actualDepart` | ARRIVES BBI + `arriveTime` (primary) |
 
-| State | SEA col (left) | BI col (right) |
-|-------|----------------|----------------|
-| `at-dock` | ARRIVES SEA + `next.arrive` | DEPARTS BI + `next.depart` (primary) |
-| `lvApproaching` | DEPARTED SEA + `actualDepart` | ARRIVES BI + `approachEta` (primary) |
-| `sailing`/`arriving` | ARRIVES SEA + `arriveTime` (primary) | DEPARTED BI + `actualDepart` |
+**BBI→SEA tab:**
+
+| State | SEA col (left) | BBI col (right) |
+|-------|----------------|-----------------|
+| `at-dock` (vessel at BBI) | ARRIVES SEA + `next.arrive` | DEPARTS BBI + `next.depart` (primary) |
+| `at-dock` (`lvAtOther` — vessel at SEA) | AT SEA | DEPARTS BBI + `next.depart` (primary) |
+| `lvApproaching` | DEPARTED SEA + `actualDepart` | ARRIVES BBI + `approachEta` (primary) |
+| `sailing`/`arriving` | ARRIVES SEA + `arriveTime` (primary) | DEPARTED BBI + `actualDepart` |
 
 ---
 
 ## CSS variables
 
 ```css
---bg:     #0d1117   /* page background */
---card:   #161b22   /* card surface */
---border: #30363d   /* borders */
---text:   #e6edf3   /* primary text */
---mid:    #8b949e   /* secondary/muted text */
---green:  #3fb950   /* live / on-time */
---amber:  #d29922   /* warning / partial */
---red:    #f85149   /* alert / departed */
---teal:   #58a6ff   /* accent / links */
+--navy:       #060f1f   /* page background */
+--navy-mid:   #0b1a30   /* mid-depth surface */
+--navy-card:  #0e2040   /* card surface */
+--navy-light: #162d52   /* hover/active surface */
+--teal:       #00c9a7   /* primary accent */
+--blue:       #2196f3   /* secondary accent */
+--amber:      #ffc947   /* warning */
+--red:        #ff5449   /* alert / departed */
+--white:      #eef3ff   /* primary text */
+--mid:        #8099c0   /* secondary text */
+--dim:        #3a5070   /* muted / labels */
+--border:     rgba(255,255,255,0.07)
+
+/* Card state badge colors */
+--st-sailing:   #58d8ae
+--st-arriving:  #eec05b
+--st-atdock:    #71bfff
+--st-delayed:   #f08f47
+--st-departed:  #8294a7
+--st-oos:       #6c7680
 ```
 
 **Vessel color palette** (`VESSEL_PALETTE`, indexed by stable hash of vessel name):
@@ -334,11 +357,19 @@ cdTimer = setInterval(updateProgress + updateCountdowns, 10s)
 
 ## Map implementation
 
-- Leaflet 1.9.4 fully inlined in `ferry.html`
-- Vessel markers: `L.divIcon` with teardrop ferry SVG, rotated by `Heading`, per-vessel color + glow
-- Init: `initMap()` called once on `DOMContentLoaded`; container must be non-zero size
-- After hide/show: call `leafMap.invalidateSize({ reset: true })` — wired to vessel section toggle
-- Tile layer: OpenStreetMap (no API key required)
+Two separate maps coexist:
+
+**1. Inline SVG route map** (`#ferry-map-svg`) — main vessel section
+- Static SVG with hand-crafted Puget Sound landmass paths, dashed bezier route, terminal label `<g>` elements
+- Vessel markers injected into `<g id="vessel-markers">` as teardrop SVG paths via `innerHTML`, rotated by `Heading`
+- Terminal labels (`term-bi`, `term-sea`) dynamically resize via `updateTermLabel()` to show animated dock dots
+- Pan/zoom via `initMapInteraction()` — touch pinch + drag, double-tap to reset
+- Vessel tap → `initMapPopup()` → card slides up with vessel detail (speed, ETA, dep time)
+
+**2. Leaflet miniMap** (`#miniMapEl`) — inside vessel detail popup
+- Leaflet 1.9.4 fully inlined; OSM tile layer, no API key
+- Created fresh on popup open (`openMiniMap()`), destroyed on close
+- Shows vessel GPS position + heading on interactive map
 
 ---
 
@@ -357,7 +388,7 @@ cdTimer = setInterval(updateProgress + updateCountdowns, 10s)
 
 1. Edit `ferry.html`
 2. Bump `const BUILD` (r57 → r58, etc.)
-3. Push directly to `main` — use `mcp__github__create_or_update_file` if in a cloud session with a forced branch, otherwise `git push origin main`
+3. Push directly to `main` — use `git push origin HEAD:main` (works even when the session assigns a feature branch)
 4. GitHub Pages auto-deploys in ~30s
 5. User may need hard cache clear on iOS Safari (`?bust=N` appended to URL)
 
@@ -370,17 +401,22 @@ cdTimer = setInterval(updateProgress + updateCountdowns, 10s)
 - **Never use `lv.Eta` for future scheduled trips** — live ETA only valid for the current active trip. Upcoming rows always use `d.arrive` (scheduled).
 - **`vesselList` always defaults to `[]`** on API failure — never undefined.
 - **`getReturnDeparture()`** temporarily swaps global `direction` — must remain atomic.
-- **Leaflet container** must be visible before `L.map()` init.
+- **Leaflet miniMap** must only be created after its container is visible (`openMiniMap` uses a 50ms timeout).
 - **`lvApproaching`**: vessel on return leg → show sailing/arriving, not at-dock. Track position, ferry rotation, and column labels all have separate `lvApproaching` branches.
+- **`lvAtOther`**: vessel docked at arrival terminal → card shows "AT BBI" / "AT SEA". Both this and `lvApproaching` affect endpoint dot classes.
+- **`approachEta` null guard**: `cardState = (approachEta && minsTo(approachEta) <= 5) ? 'arriving' : 'sailing'` — `minsTo(null)` returns a large negative (null coerces to 0) which would wrongly pass the `<= 5` check without the guard.
+- **`cdTarget` fallback**: `atDock ? next.depart : (arriveTime || next.depart)` — never leave cdTarget null while sailing; null produces "Departed" in the pill.
 - **Track fill vs pin**: at-dock → fill = 0%, pin = 3%/97%. Sailing → fill = pin = barPct.
 - **`cdTarget`** drives both the pill and `updateProgress()`. It's set in `renderSchedule()` and read by the interval callbacks as a closure variable.
-- **Upcoming slice**: `upcoming.slice(0, 3)` — do NOT use `slice(1, 4)`; the featured departure is also the first upcoming row.
+- **Upcoming slice**: `upcoming.slice(1, 4)` — skip index 0 (the active sailing already shown in the featured card); show the next 3.
+- **`DepartingTerminalID` when `AtDock=true`** = the terminal the vessel IS currently at (not where it's departing to). This is how `lvAtOther` works.
+- **Vessel color palette** (`VESSEL_PALETTE`, indexed by stable hash of vessel name): `#00c9a7`, `#ffc947`, `#f472b6`, `#60a5fa`, `#fb923c`, `#a3e635`, `#c084fc`, `#f87171`. Docked state shown by dimmer glow only — never a different color.
 
 ---
 
 ## Known issues
 
 - **Figma MCP in cloud**: Network blocked. Use the git-trigger workflow — it's fully automatic.
-- **Branch forced in cloud sessions**: code.claude.com assigns a feature branch. Workaround: push to `main` directly via `mcp__github__create_or_update_file`.
 - **CORS on `file://`**: Live API data won't load from disk. Use `npx serve .` locally.
 - **Mobile cache**: iOS Safari aggressively caches. Hard-clear or `?bust=N` after deploy.
+- **Transient two-vessel glitch**: Very briefly after one vessel docks, both vessels may appear heading the same direction as the API reports stale position data. Clears on next poll. Not worth fixing — it's a WSDOT data artifact.
