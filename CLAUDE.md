@@ -48,7 +48,20 @@ The script uses `$WSDOT_API_KEY` if set, otherwise the working key baked into `f
 
 ### Figma
 
-Figma tooling has been removed for now. When design work resumes, connect a Figma MCP server in `.claude/settings.json` (`mcpServers`) — `api.figma.com` is reachable from Codespaces, so the MCP will work directly without the old git-trigger workflow.
+Figma is connected via the **framelink** MCP server (`figma-developer-mcp`), registered at **project scope** in `.mcp.json`. `api.figma.com` is reachable from Codespaces, so it works directly without the old git-trigger workflow.
+
+**Setup (already done):**
+
+```bash
+claude mcp add figma --scope project -- npx -y figma-developer-mcp '--figma-api-key=${FIGMA_API_KEY}' --stdio
+```
+
+This writes `.mcp.json` with a `${FIGMA_API_KEY}` reference (no secret in the file — safe to commit).
+
+- **`mcpServers` in `.claude/settings.json` is NOT read** by this Claude Code version — use project `.mcp.json` (via `claude mcp add --scope project`). That is the only working location.
+- **Token:** the Figma personal access token must be in the env as `FIGMA_API_KEY`. Store it as a **Codespaces secret** (repo → Settings → Secrets and variables → **Codespaces**, not Actions — Actions secrets are invisible to the Codespace), then rebuild the container. The existing `FIGMA_API_KEY` Actions secret does nothing for the MCP.
+- **First launch:** a project `.mcp.json` server requires one-time manual approval — run `claude`, approve **figma** when prompted, then `/mcp` should show ✓ Connected.
+- **Tools:** `get_figma_data` (layout/styles/text for a file or node) and `download_figma_images` (export assets).
 
 ---
 
@@ -329,6 +342,8 @@ Two separate maps coexist:
 5. User may need hard cache clear on iOS Safari (`?bust=N` appended to URL)
 
 **Always push live immediately — commit → push to `main`. No PRs, no branches, no waiting.**
+
+**Commit & push EVERY change, not just `ferry.html`.** The user keeps a clean working tree — never leave files uncommitted. After any edit (app code, config like `.mcp.json`, notes like this file, anything), commit and push to `main` without being asked, even when the change doesn't affect the live site. The only pause is to check that no file being pushed contains a secret/token.
 
 ---
 
