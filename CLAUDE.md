@@ -4,21 +4,23 @@
 
 Real-time WSDOT Seattle ↔ Bainbridge Island ferry tracker. Single deliverable: `ferry.html` — a fully self-contained HTML file with all CSS, JS, and Leaflet 1.9.4 inlined. No build step. Deployed to GitHub Pages at `https://demetrearges206.github.io/seattle-ferry-tracker/ferry.html`.
 
-## Current state (r73)
+## Current state (r74)
 
-- `const BUILD = 'r73'` in ferry.html — bump on every change
+- `const BUILD = 'r74'` in ferry.html — bump on every change
 - Inter font inlined as base64 at deploy time via `.github/workflows/pages.yml` (not CDN)
-- Direction toggle: `SEA-BBI` (Seattle → Bainbridge) or `BBI-SEA` (Bainbridge → Seattle)
+- Direction toggle: `SEA-BBI` (Seattle → Bainbridge) or `BBI-SEA` (Bainbridge → Seattle). Tab labels read **"To Bainbridge" / "To Seattle"**. Default direction is smart: remembered choice (`ferry_dir_v1`) → geolocation → time-of-day (before noon → `BI-SEA`).
 - Featured card (`#schedFeatured`) renders above the Vessels/map section
 - Upcoming section (`#schedContent`) shows `upcoming.slice(1, 4)` — skips the active sailing (already in featured card), shows next 3
-- Vessel map markers: teardrop SVG icon in inline SVG map, per-vessel palette color; Leaflet miniMap in vessel popup
-- Progress track at bottom of featured card — SEA always left, BBI always right; ferry icon moves along it
+- Vessel map markers: teardrop SVG icon in inline SVG map, per-vessel palette color; Leaflet miniMap in vessel popup. Featured vessel is drawn **last** (paints on top); a `#mapLegend` overlay lists the two route boats + ETAs
+- Progress track at bottom of featured card — **BBI always left (0%), SEA always right (100%)** to match the map; ferry icon moves along it via `visPct = 100 - barPct`
+- **r74 redesign — color = two independent axes:** **vessel color = identity** (`--vc`, set inline on `.next-card`; drives eyebrow strip, vessel name, lead metric, route track), **status color = state** (the badge only). New status palette avoids the vessel gold/green band. Card gained an **eyebrow ribbon** (`::before` in `--vc`), an **"as of HH:MM"** freshness stamp, and a big **lead metric** ("Departs in / Arrives in" + number) as the hero. Build tag hidden — long-press the route name to reveal.
+- **`getDirectionVessel()` + `featuredVessel` global:** the card features the vessel actually positioned for the selected direction (from live positions), not the schedule's planned hull
 - `lvApproaching` state: vessel on return leg toward departure terminal shows sailing/arriving (not at-dock)
 - `lvAtOther` state: vessel docked at the wrong terminal (arrival side) — card shows "AT BBI" or "AT SEA" with next scheduled departure
 
 ## File map
 
-- `ferry.html` — entire app (~225 KB, all CSS/JS/Leaflet inlined)
+- `ferry.html` — entire app (~126 KB; grows to ~225 KB after the deploy step inlines Inter as base64)
 - `.github/workflows/pages.yml` — GitHub Pages deploy; inlines Inter font as base64 (the only workflow; not a workaround — this publishes the site)
 - `scripts/wsdot.py` — local dev tool: fetches live WSDOT vessel/schedule data and writes readable snapshots to `api-snapshots/`. Run `python3 scripts/wsdot.py [vessels|schedule|all]`
 - `api-snapshots/` — local scratch output from `scripts/wsdot.py` (gitignored, not committed)
@@ -145,7 +147,8 @@ const TERMINALS = {
 let vesselList = [];        // [{VesselName, Lat, Lon, InService, AtDock, Eta, ...}]
 let scheduleData = null;    // raw WSDOT schedule response
 let waitData = [];          // terminal wait times
-let direction = 'SEA-BI';  // or 'BI-SEA'
+let direction = 'SEA-BI';  // or 'BI-SEA' (default chosen by pickDefaultDirection())
+let featuredVessel = null;  // name of vessel in the featured card — drawn on top in updateMap()
 let lastUpdate = null;      // Date of last successful refresh
 let cdTimer = null;         // interval handle for 10s countdown ticks
 ```
@@ -161,6 +164,8 @@ let cdTimer = null;         // interval handle for 10s countdown ticks
 | `getDepartures()` | Today's departures for current `direction` from `scheduleData` |
 | `getReturnDeparture(afterTime)` | Temporarily swaps `direction`; gets next opposite-direction departure |
 | `getLiveVessel(name)` | Live vessel object from `vesselList` |
+| `getDirectionVessel(depId, arrId)` | Live route vessel positioned to serve `depId→arrId`: underway in-direction → docked at dep → approaching dep to turn around. Drives `featuredVessel` |
+| `renderMapLegend()` | `#mapLegend` overlay — the two route boats + ETAs |
 | `routeVessels()` | `vesselList` filtered to SEA↔BI route vessels |
 | `countdownInfo(date)` | `{text, cls}` for countdown pill |
 | `setStatus(state)` | Header dot + text (`loading`/`live`/`partial`/`stale`) |
@@ -217,34 +222,43 @@ const lvAtOther = lv && lv.AtDock && lv.DepartingTerminalID === dirArr;
 | `delayed` | Underway, ETA > 5 min late | Along track |
 | `oos` | `!lv.InService` | Hidden (shows scheduled times) |
 
-### Progress track
+### Progress track (r74)
 
-- SEA always left (0%), BI always right (100%)
-- `nc-track-fill` width = 0% when at-dock; = pin% when sailing
-- Ferry icon rotation: `((direction === 'SEA-BI') !== lvApproaching) ? 90 : -90`
-- `updateProgress()` fires every 10s via `cdTimer`; uses `cdTarget` (no dependency on `LeftDock`)
+- **BBI always left (0%), SEA always right (100%)** — matches the map orientation. Coordinate runs BBI=0 … SEA=100; `visPct = 100 - barPct` converts trip-progress to visual position.
+- Endpoint dots **flank the line** (`gap:12px`, no SEA/BBI labels — the times row labels the terminals). Dot states use `var(--vc)`: `--docked` (solid+glow), `--destination` (ring+pulse), `--hollow` (outline).
+- `.nc-track-fill` (in `--vc`) = traveled segment from origin terminal to the vessel; width = 0% when at-dock.
+- `.nc-vessel-pin` = 40px ferry SVG in `--vc`, centered on the line, `display:none` at-dock/oos.
+- Ferry icon rotation: `((direction === 'SEA-BI') !== lvApproaching) ? -90 : 90` (signs flipped vs r73 because of the BBI-left coordinate flip).
+- `updateProgress()` fires every 10s via `cdTimer`; uses `cdTarget` (no dependency on `LeftDock`). Early-return guard skips `fallback`, `at-dock`, **and `oos`**.
 
-### Column labels
+### Lead metric (r74)
 
-SEA is always left, BBI always right regardless of direction tab.
+The hero of the card. Uppercase label + big number + unit, all in `var(--vc)`:
+- at-dock / `lvApproaching` → "Departs in" + `minsTo(next.depart)`; else → "Arrives in" + `minsTo(arriveTime || next.depart)`.
+- `< 0` → "Now"; `< 60` → `N min`; else → `Xh Ym` (no unit).
+- `oos` → "Out of service" (26px, neutral `--mid`), label "Status".
+
+### Column labels (r74)
+
+**BBI is always on the LEFT, SEA always on the RIGHT** (mirrors the map) — flipped from r73. The card no longer shows a countdown pill in the header (the lead metric replaces it); labels are shorter ("FROM"/"TO").
 
 **SEA→BBI tab:**
 
-| State | SEA col (left) | BBI col (right) |
+| State | BBI col (left) | SEA col (right) |
 |-------|----------------|-----------------|
-| `at-dock` (vessel at SEA) | DEPARTS SEA + `next.depart` (primary) | ARRIVES BBI + `next.arrive` |
-| `at-dock` (`lvAtOther` — vessel at BBI) | DEPARTS SEA + `next.depart` (primary) | AT BBI |
-| `lvApproaching` | ARRIVES SEA + `approachEta` (primary) | DEPARTED BBI + `actualDepart` |
-| `sailing`/`arriving` | DEPARTED SEA + `actualDepart` | ARRIVES BBI + `arriveTime` (primary) |
+| `at-dock` (vessel at SEA) | TO BBI + `next.arrive` | FROM SEA + `next.depart` (primary) |
+| `at-dock` (`lvAtOther` — vessel at BBI) | AT BBI | FROM SEA + `next.depart` (primary) |
+| `lvApproaching` | DEPARTED BBI + `actualDepart` | ARRIVES SEA + `approachEta` (primary) |
+| `sailing`/`arriving` | ARRIVES BBI + `arriveTime` (primary) | DEPARTED SEA + `actualDepart` |
 
 **BBI→SEA tab:**
 
-| State | SEA col (left) | BBI col (right) |
+| State | BBI col (left) | SEA col (right) |
 |-------|----------------|-----------------|
-| `at-dock` (vessel at BBI) | ARRIVES SEA + `next.arrive` | DEPARTS BBI + `next.depart` (primary) |
-| `at-dock` (`lvAtOther` — vessel at SEA) | AT SEA | DEPARTS BBI + `next.depart` (primary) |
-| `lvApproaching` | DEPARTED SEA + `actualDepart` | ARRIVES BBI + `approachEta` (primary) |
-| `sailing`/`arriving` | ARRIVES SEA + `arriveTime` (primary) | DEPARTED BBI + `actualDepart` |
+| `at-dock` (vessel at BBI) | FROM BBI + `next.depart` (primary) | TO SEA + `next.arrive` |
+| `at-dock` (`lvAtOther` — vessel at SEA) | FROM BBI + `next.depart` (primary) | AT SEA |
+| `lvApproaching` | ARRIVES BBI + `approachEta` (primary) | DEPARTED SEA + `actualDepart` |
+| `sailing`/`arriving` | DEPARTED BBI + `actualDepart` | ARRIVES SEA + `arriveTime` (primary) |
 
 ---
 
@@ -264,19 +278,20 @@ SEA is always left, BBI always right regardless of direction tab.
 --dim:        #3a5070   /* muted / labels */
 --border:     rgba(255,255,255,0.07)
 
-/* Card state badge colors */
---st-sailing:   #58d8ae
---st-arriving:  #eec05b
---st-atdock:    #71bfff
---st-delayed:   #f08f47
---st-departed:  #8294a7
---st-oos:       #6c7680
+/* Status badge colors (r74 — re-chosen to avoid the vessel gold/green band).
+   Used ONLY by the status badge. Rendered color: var(--st-*) on a
+   color-mix(in oklab, var(--st-*) 16%, transparent) background. */
+--st-atdock:    #71bfff   /* blue   */
+--st-sailing:   #2bc5e0   /* cyan   */
+--st-arriving:  #a78bfa   /* violet */
+--st-delayed:   #f0883e   /* orange */
+--st-departed:  #8294a7   /* slate  */
+--st-oos:       #6c7680   /* gray   */
+--st-cancelled: #e9504d   /* red    */
 ```
 
-**Vessel color palette** (`VESSEL_PALETTE`, indexed by stable hash of vessel name):
-`#00c9a7`, `#ffc947`, `#f472b6`, `#60a5fa`, `#fb923c`, `#a3e635`, `#c084fc`, `#f87171`
-
-Always use palette color for vessel markers — docked state shown by dimmer glow only, not a different color.
+**Vessel colors** (`VESSEL_COLORS`, r74 — named per-vessel map, no longer a hash-indexed palette):
+`Tacoma #e2b93a` (gold), `Wenatchee #73e087` (green), plus a 12-hue ramp for the other 19 hulls. `getVesselColor(name)` looks up the map. The chosen vessel's hue is the card's `--vc` AND its map-marker color, so card and map reinforce each other. Docked state shown by dimmer glow only — never a different color.
 
 ---
 
@@ -301,6 +316,7 @@ cdTimer = setInterval(updateProgress + updateCountdowns, 10s)
 |-----|----------|-----|
 | `wsf_sched_v1` | `{ date: "YYYY-MM-DD", data: <raw schedule> }` | Invalidated when date ≠ today |
 | `ferry_tip_v1` | `"1"` | Permanent — home screen tip flag |
+| `ferry_dir_v1` | `"SEA-BI"` \| `"BI-SEA"` | Permanent — remembered direction; set when user taps a tab, read first by `pickDefaultDirection()` |
 
 ---
 
@@ -331,12 +347,14 @@ Two separate maps coexist:
 | `partial` | amber, static | "Schedule · vessels offline" |
 | `stale` | red, static | "Stale · Xm ago" / "Offline" |
 
+`setStatus()` also drives `#dataBanner` (above the featured card): `partial` → "Live vessel positions are temporarily unavailable…"; `stale` → "Data may be out of date…"; otherwise empty.
+
 ---
 
 ## Workflow
 
 1. Edit `ferry.html`
-2. Bump `const BUILD` (r73 → r74, etc.)
+2. Bump `const BUILD` (r74 → r75, etc.)
 3. Push directly to `main` — `git push origin main` (working on `main` directly in Codespaces)
 4. GitHub Pages auto-deploys in ~30s
 5. User may need hard cache clear on iOS Safari (`?bust=N` appended to URL)
@@ -357,7 +375,10 @@ Two separate maps coexist:
 - **`lvAtOther`**: vessel docked at arrival terminal → card shows "AT BBI" / "AT SEA". Both this and `lvApproaching` affect endpoint dot classes.
 - **`approachEta` null guard**: `cardState = (approachEta && minsTo(approachEta) <= 5) ? 'arriving' : 'sailing'` — `minsTo(null)` returns a large negative (null coerces to 0) which would wrongly pass the `<= 5` check without the guard.
 - **`cdTarget` fallback**: `atDock ? next.depart : (arriveTime || next.depart)` — never leave cdTarget null while sailing; null produces "Departed" in the pill.
-- **Track fill vs pin**: at-dock → fill = 0%, pin = 3%/97%. Sailing → fill = pin = barPct.
+- **BBI-left / SEA-right coordinate flip (r74)**: the track runs BBI=0% (left) … SEA=100% (right). All pin/fill math goes through `visPct = 100 - barPct`. `updateProgress()` recomputes `visPct` independently — if you touch one, touch both. Ferry rotation signs are flipped from r73 (`-90`/`90`) for the same reason.
+- **`getDirectionVessel()` (r74)**: drives `featuredVessel`, which `updateMap()` reads to sort the featured boat **last** (on top). The card's `lv` is `getDirectionVessel(...) || getLiveVessel(next.vessel)` — live position wins over the schedule's planned hull. `featVessel`/`featuredVessel` (not `next.vessel`) feed the card color, name, and `lvAny` OOS check.
+- **`--vc` is set inline on `.next-card`** (`style="--vc:${vesselClr}"`) — the eyebrow `::before`, lead metric, name, and track all inherit it. Don't move it to a child or those break.
+- **Track fill vs pin**: at-dock → fill = 0%, pin hidden. Sailing → pin at `visPct`, fill spans origin→pin (side depends on direction).
 - **`cdTarget`** drives both the pill and `updateProgress()`. It's set in `renderSchedule()` and read by the interval callbacks as a closure variable.
 - **Upcoming slice**: `upcoming.slice(1, 4)` — skip index 0 (the active sailing already shown in the featured card); show the next 3.
 - **`DepartingTerminalID` when `AtDock=true`** = the terminal the vessel IS currently at (not where it's departing to). This is how `lvAtOther` works.

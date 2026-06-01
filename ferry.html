@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+
   <meta charset="UTF-8">
   <meta http-equiv="Cache-Control" content="no-store">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
@@ -42,10 +43,10 @@
       --dim:        #3a5070;
       --border:     rgba(255,255,255,0.07);
       --radius:     14px;
-      --st-sailing:   #58d8ae;
-      --st-arriving:  #eec05b;
+      --st-sailing:   #2bc5e0;
+      --st-arriving:  #a78bfa;
       --st-atdock:    #71bfff;
-      --st-delayed:   #f08f47;
+      --st-delayed:   #f0883e;
       --st-departed:  #8294a7;
       --st-oos:       #6c7680;
       --st-cancelled: #e9504d;
@@ -81,7 +82,8 @@
     .route-name { font-size: 17px; font-weight: 700; letter-spacing: -0.3px; line-height: 1; color: #eef3ff; }
     .route-name .chevron { color: var(--teal); margin: 0 3px; font-size: 14.7px; }
     .live-row { display: flex; align-items: center; gap: 5px; font-size: 10.3px; color: var(--mid); }
-    .build-tag { font-size: 10px; color: var(--dim); background: rgba(255,255,255,0.04); border-radius: 4px; padding: 1px 5px; font-variant-numeric: tabular-nums; }
+    .build-tag { font-size: 10px; color: var(--dim); background: rgba(255,255,255,0.04); border-radius: 4px; padding: 1px 5px; font-variant-numeric: tabular-nums; display: none; }
+    .build-tag.revealed { display: inline-block; }
     .live-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--teal); flex-shrink: 0; }
     .live-dot.live  { animation: livepulse 2s ease-in-out infinite; }
     .live-dot.stale   { background: var(--red);   animation: none; }
@@ -165,11 +167,57 @@
     /* ── Next Ferry Hero ─────────────────────────────────────── */
     /* ── Featured vessel card ────────────────────────────── */
     .next-card {
+      position: relative;
       margin: 16px 16px 0; border-radius: 14px;
       background: #0e2040; border: 1px solid rgba(255,255,255,0.07);
       padding: 18px 20px 16px;
       display: flex; flex-direction: column; gap: 5px;
     }
+    /* Eyebrow hairline: a thin ribbon across the card top, in the VESSEL color (matches the map) */
+    .next-card::before {
+      content: ''; position: absolute; left: -1px; right: -1px; top: -1px; height: 3px;
+      border-radius: 14px 14px 0 0; background: var(--vc, transparent);
+      box-shadow: 0 0 12px color-mix(in oklab, var(--vc, transparent) 45%, transparent);
+    }
+    .next-card[data-state="oos"]::before { opacity: .5; }
+    .next-card[data-state="oos"] .nc-route-wrap { opacity: .55; }
+    /* Trust signal — data freshness, top-right of card header */
+    .nc-asof { font-size: 10px; font-weight: 600; color: var(--dim); letter-spacing: .2px; white-space: nowrap; flex-shrink: 0; font-variant-numeric: tabular-nums; }
+    /* Lead metric — the actionable hero number, in the VESSEL color */
+    .nc-lead { display: flex; flex-direction: column; gap: 2px; padding: 6px 0 2px; }
+    .nc-lead-lbl { font-size: 9px; font-weight: 700; letter-spacing: 1.8px; text-transform: uppercase; color: var(--vc); line-height: 11px; }
+    .nc-lead-val { display: flex; align-items: baseline; gap: 6px; }
+    .nc-lead-num { font-size: 40px; font-weight: 800; line-height: 1; color: var(--vc); letter-spacing: -1px; font-variant-numeric: tabular-nums; }
+    .nc-lead-unit { font-size: 17px; font-weight: 700; color: var(--vc); }
+    .nc-lead .delay-tag { align-self: flex-start; margin-top: 2px; }
+    /* Last-boat awareness */
+    .nc-lastboat { font-size: 10px; font-weight: 600; letter-spacing: .3px; color: var(--st-arriving); }
+    /* Partial-data banner */
+    .data-banner {
+      margin: 14px 16px 0; padding: 9px 14px; border-radius: 10px;
+      background: color-mix(in oklab, var(--amber) 12%, transparent);
+      border: 1px solid color-mix(in oklab, var(--amber) 35%, transparent);
+      color: var(--amber); font-size: 11.5px; font-weight: 600; line-height: 1.4;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .data-banner .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--amber); flex-shrink: 0; }
+    /* Slim empty-alerts line (no full card for a null state) */
+    .alerts-empty-slim { margin: 0 16px; padding: 4px 2px 0; font-size: 12px; color: var(--dim); display: flex; align-items: center; gap: 7px; }
+    .alerts-empty-slim svg { flex-shrink: 0; }
+    /* Route-vessels legend overlaid on the map */
+    .map-legend {
+      position: absolute; top: 8px; right: 8px; z-index: 9;
+      display: flex; flex-direction: column; gap: 5px; align-items: flex-end;
+      pointer-events: none;
+    }
+    .map-legend-row {
+      display: flex; align-items: center; gap: 6px;
+      background: rgba(8,18,38,.82); border: 1px solid var(--border);
+      border-radius: 8px; padding: 4px 8px; font-size: 10.5px; font-weight: 600;
+      color: var(--white); white-space: nowrap; backdrop-filter: blur(6px);
+    }
+    .map-legend-row .lg-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+    .map-legend-row .lg-sub { color: var(--mid); font-weight: 500; }
     /* Header */
     .nc-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
     .nc-vessel { display: flex; align-items: center; gap: 8px; min-width: 0; }
@@ -201,19 +249,17 @@
     }
     .nc-col-time { display: flex; align-items: flex-end; gap: 1px; line-height: 1; }
     .nc-col-primary .nc-col-label { color: #fff; }
-    .nc-col-primary .nc-t-big    { font-size: 42px; font-weight: 700; line-height: 1; color: #fff; }
-    .nc-col-primary .nc-t-ampm   { font-size: 17px; font-weight: 700; color: #fff; line-height: 1.3; }
+    .nc-col-primary .nc-t-big    { font-size: 26px; font-weight: 700; line-height: 1; color: #fff; }
+    .nc-col-primary .nc-t-ampm   { font-size: 14px; font-weight: 700; color: #fff; line-height: 1.3; }
     .nc-col-secondary .nc-col-label { color: var(--mid); }
     .nc-col-secondary .nc-t-big    { font-size: 24px; font-weight: 700; color: var(--mid); line-height: 1; }
     .nc-col-secondary .nc-t-ampm   { font-size: 24px; font-weight: 700; color: var(--mid); line-height: 1; }
     /* Route progress track */
-    .nc-route-wrap { padding-top: 10px; }
-    .nc-track-row { display: flex; align-items: flex-start; gap: 8px; }
-    .nc-track-ep-wrap { display: flex; flex-direction: column; align-items: center; gap: 5px; }
-    .nc-track-label { font-size: 10px; color: var(--mid); letter-spacing: .5px; font-weight: 600; }
+    .nc-route-wrap { padding-top: 12px; }
+    .nc-track-row { display: flex; align-items: center; gap: 12px; }
     .nc-track-line {
       flex: 1; height: 3px; background: var(--dim);
-      position: relative; border-radius: 2px; margin-top: 5.5px;
+      position: relative; border-radius: 2px;
     }
     .nc-track-fill { position: absolute; left: 0; top: 0; height: 100%; border-radius: 2px; background: var(--vc); width: 0; }
     /* Endpoint dots */
@@ -238,16 +284,16 @@
       100% { transform: translate(-50%,-50%) scale(2.05); opacity: 0; }
     }
     .nc-vessel-pin {
-      position: absolute; top: 1.5px; transform: translateX(-50%);
+      position: absolute; top: 50%; transform: translate(-50%,-50%);
       display: flex; flex-direction: column; align-items: center; z-index: 4;
     }
     .nc-pin-icon {
-      width: 36px; height: 36px; display: flex; align-items: center;
-      justify-content: center; margin-top: -18px;
+      width: 40px; height: 40px; display: flex; align-items: center;
+      justify-content: center;
       color: var(--vc);
       filter:
-        drop-shadow(0 0 6px  color-mix(in srgb, currentColor 55%, transparent))
-        drop-shadow(0 0 14px color-mix(in srgb, currentColor 28%, transparent));
+        drop-shadow(0 0 4px  color-mix(in srgb, currentColor 42%, transparent))
+        drop-shadow(0 0 10px color-mix(in srgb, currentColor 16%, transparent));
     }
     .nc-pin-icon svg { display: block; overflow: visible; }
     .nc-pin-time {
@@ -274,26 +320,27 @@
     /* ── Upcoming list ───────────────────────────────────────── */
     .upcoming-list { margin: 0 16px; border-radius: var(--radius); border: 1px solid var(--border); overflow: hidden; }
     .sail-row {
-      display: grid; grid-template-columns: 1fr auto auto;
-      align-items: center; gap: 12px;
-      padding: 13px 16px; background: var(--navy-card);
+      display: flex; align-items: center; justify-content: space-between; gap: 12px;
+      padding: 14px 16px; background: var(--navy-card);
       border-bottom: 1px solid var(--border);
     }
     .sail-row:last-child { border-bottom: none; }
-    .sail-main { display: flex; flex-direction: column; gap: 4px; }
-    .sail-vessel { font-size: 10.8px; font-weight: 700; color: var(--dim); line-height: 13px; }
+    .sail-times { display: flex; align-items: baseline; gap: 8px; }
     .sail-dep-time { display: flex; align-items: baseline; }
-    .sail-dep-t { font-size: 14.1px; font-weight: 700; color: var(--white); line-height: 17px; }
-    .sail-ampm { font-size: 11px; font-weight: 700; color: var(--white); }
-    .sail-eta { display: flex; flex-direction: column; gap: 4px; }
-    .sail-eta-lbl { font-size: 10.8px; font-weight: 700; color: var(--dim); line-height: 13px; }
-    .sail-eta-row { display: flex; align-items: baseline; gap: 2px; white-space: nowrap; }
-    .sail-arrow { font-size: 15px; font-weight: 400; color: var(--mid); line-height: 18px; }
-    .sail-arr-t { font-size: 14.1px; font-weight: 700; color: var(--mid); line-height: 17px; }
-    .sail-arr-ampm { font-size: 11px; font-weight: 700; color: var(--mid); }
+    .sail-dep-t { font-size: 19px; font-weight: 800; color: var(--white); line-height: 1; letter-spacing: -0.3px; }
+    .sail-ampm { font-size: 12px; font-weight: 700; color: var(--white); }
+    .sail-arrow { font-size: 16px; font-weight: 400; color: var(--mid); }
+    .sail-arr-time { display: flex; align-items: baseline; }
+    .sail-arr-t { font-size: 19px; font-weight: 800; color: var(--mid); line-height: 1; letter-spacing: -0.3px; }
+    .sail-arr-ampm { font-size: 12px; font-weight: 700; color: var(--mid); }
+    .sail-right { display: flex; flex-direction: column; align-items: flex-end; gap: 7px; }
+    .sail-vtag { display: flex; align-items: center; gap: 5px; }
+    .sail-vdot { width: 6px; height: 6px; border-radius: 50%; background: var(--mid); flex-shrink: 0; }
+    .sail-vname { font-size: 10px; font-weight: 600; color: var(--mid); text-transform: uppercase; letter-spacing: 0.4px; }
     .sail-pill {
-      font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 8px;
-      background: rgba(255,255,255,0.07); color: var(--mid); white-space: nowrap;
+      font-size: 11px; font-weight: 700; padding: 3px 9px; border-radius: 8px;
+      background: color-mix(in oklab, var(--st-atdock) 14%, transparent);
+      color: var(--st-atdock); white-space: nowrap;
     }
     .sail-pill.now  { background: rgba(248,81,73,0.15);  color: var(--red); }
     .sail-pill.soon { background: rgba(0,201,167,0.12);  color: var(--teal); }
@@ -435,12 +482,14 @@
 </header>
 
 <div class="tabs">
-  <button class="tab active" data-dir="SEA-BI" id="tabSeaBi">SEA → BBI</button>
-  <button class="tab" data-dir="BI-SEA" id="tabBiSea">BBI → SEA</button>
+  <button class="tab active" data-dir="SEA-BI" id="tabSeaBi">To Bainbridge</button>
+  <button class="tab" data-dir="BI-SEA" id="tabBiSea">To Seattle</button>
 </div>
 
 <div class="scroll-body">
   <main class="main">
+
+    <div id="dataBanner"></div>
 
     <div id="schedFeatured">
       <div class="loading-wrap"><div class="ring"></div><span id="loadingMsg">Fetching today's schedule…</span></div>
@@ -504,12 +553,13 @@
           <div class="map-popup-name" id="map-popup-name"></div>
           <div id="map-popup-body"></div>
         </div>
+        <div class="map-legend" id="mapLegend"></div>
       </div>
     </div>
 
     <div id="schedContent"></div>
 
-    <div class="section-label">Alerts</div>
+    <div class="section-label" id="alertsLabel">Alerts</div>
     <div id="alertsContent">
       <div style="padding:0 16px 8px"><div style="height:72px;border-radius:var(--radius);background:var(--navy-card);border:1px solid var(--border)"></div></div>
     </div>
@@ -528,7 +578,7 @@
 'use strict';
 
 // ── Build version — bump this string on every deploy ─────
-const BUILD = 'r73';
+const BUILD = 'r74';
 
 // ── Config ───────────────────────────────────────────────
 const API_KEY   = 'ff39cd9c-729e-40ac-b740-1cebec6226f9';
@@ -551,6 +601,7 @@ let disruptions  = [];
 let waitData     = [];
 let bulletinData = [];
 let direction    = 'SEA-BI';
+let featuredVessel = null;   // name of the vessel shown in the featured card (drawn on top in the map)
 let schedOpen        = false;
 let vesselStripOpen  = false;
 let cdTimer      = null;
@@ -763,10 +814,13 @@ function renderAlerts() {
     });
   }
 
+  const lbl = document.getElementById('alertsLabel');
   if (!items.length) {
-    wrap.innerHTML = `<div class="alerts-card"><div class="alert-empty">No active alerts</div></div>`;
+    if (lbl) lbl.style.display = 'none';
+    wrap.innerHTML = `<div class="alerts-empty-slim"><svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M20 6L9 17l-5-5" stroke="#3a5070" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>No active alerts</div>`;
     return;
   }
+  if (lbl) lbl.style.display = '';
 
   wrap.innerHTML = `<div class="alerts-card">${
     items.map(t => `<div class="alert-item">${t}</div>`).join('')
@@ -930,6 +984,24 @@ function getLiveVessel(name) {
   return vesselList.find(v => v.VesselName === name && v.InService) || null;
 }
 
+// Pick the live route vessel actually positioned to serve `depId → arrId`.
+// The static schedule's hull assignment can drift from reality (boats swap
+// runs), so the featured card trusts live positions over the planned name.
+function getDirectionVessel(depId, arrId) {
+  const rv = routeVessels();
+  if (!rv.length) return null;
+  // 1) underway in this exact direction
+  let v = rv.find(x => !x.AtDock && x.DepartingTerminalID === depId && x.ArrivingTerminalID === arrId);
+  if (v) return v;
+  // 2) docked at our departure terminal, ready to sail our way
+  v = rv.find(x => x.AtDock && x.DepartingTerminalID === depId);
+  if (v) return v;
+  // 3) sailing the opposite way, approaching our departure terminal to turn around
+  v = rv.find(x => !x.AtDock && x.DepartingTerminalID === arrId && x.ArrivingTerminalID === depId);
+  if (v) return v;
+  return null;
+}
+
 function routeVessels() {
   if (!Array.isArray(vesselList)) return [];
   return vesselList.filter(v =>
@@ -969,11 +1041,15 @@ function renderSchedule() {
 
   const next = upcoming[0];
   const rest = upcoming.slice(1, 4);
-  const lv = getLiveVessel(next.vessel);
 
-  // Only use live data if the vessel is heading toward the correct destination for this tab
+  // Feature the vessel actually positioned for this direction (live), not the
+  // schedule's planned hull — they can disagree when boats swap runs.
   const dirDep = direction === 'SEA-BI' ? TERMINALS.SEA.id : TERMINALS.BI.id;
   const dirArr = direction === 'SEA-BI' ? TERMINALS.BI.id  : TERMINALS.SEA.id;
+  const dirLive = getDirectionVessel(dirDep, dirArr);
+  const lv = dirLive || getLiveVessel(next.vessel);
+  const featVessel = lv ? lv.VesselName : next.vessel;
+  featuredVessel = featVessel;
   const lvOnRoute = lv && !lv.AtDock &&
     lv.DepartingTerminalID === dirDep && lv.ArrivingTerminalID === dirArr;
   const liveEta = lvOnRoute ? parseWSDot(lv.Eta) : null;
@@ -988,7 +1064,7 @@ function renderSchedule() {
 
   // ── Determine card state ───────────────────────────────
   // Check OOS without the InService filter getLiveVessel applies
-  const lvAny = Array.isArray(vesselList) ? vesselList.find(v => v.VesselName === next.vessel) : null;
+  const lvAny = Array.isArray(vesselList) ? vesselList.find(v => v.VesselName === featVessel) : null;
 
   let cardState;
   if (lvAny && !lvAny.InService) {
@@ -1024,8 +1100,8 @@ function renderSchedule() {
     ? `Next: Departs ${depTermName} · ${fmtTime(next.depart)}`
     : (returnDep ? `Next: Departs ${destName} · ${fmtTime(returnDep.depart)}` : null);
 
-  // ── SEA (left) and BI (right) column values ─────────────
-  // SEA is always on the left, BI always on the right.
+  // ── BI (left) and SEA (right) column values — matches map orientation ──
+  // BBI is on the left, SEA on the right (mirrors the map).
   // Primary = the "focus" terminal (where ferry is for at-dock; destination when underway).
   let seaLabel, seaTime, seaPrimary;
   let biLabel, biTime, biPrimary;
@@ -1033,11 +1109,11 @@ function renderSchedule() {
     if (atDock) {
       if (lvAtOther) {
         // Vessel docked at BBI (will cross to SEA first before this SEA→BBI trip)
-        biLabel  = 'AT BBI';      biTime  = null;         biPrimary  = false;
-        seaLabel = 'DEPARTS SEA'; seaTime = next.depart;  seaPrimary = true;
+        biLabel  = 'AT BBI';   biTime  = null;         biPrimary  = false;
+        seaLabel = 'FROM SEA'; seaTime = next.depart;  seaPrimary = true;
       } else {
-        seaLabel = 'DEPARTS SEA'; seaTime = next.depart; seaPrimary = true;
-        biLabel  = 'ARRIVES BBI'; biTime  = next.arrive; biPrimary  = false;
+        seaLabel = 'FROM SEA'; seaTime = next.depart; seaPrimary = true;
+        biLabel  = 'TO BBI';   biTime  = next.arrive; biPrimary  = false;
       }
     } else if (lvApproaching) {
       // Vessel sailing BBI→SEA, approaching SEA for upcoming SEA→BBI departure
@@ -1051,11 +1127,11 @@ function renderSchedule() {
     if (atDock) {
       if (lvAtOther) {
         // Vessel docked at SEA (will cross to BBI first before this BBI→SEA trip)
-        seaLabel = 'AT SEA';       seaTime = null;         seaPrimary = false;
-        biLabel  = 'DEPARTS BBI';  biTime  = next.depart;  biPrimary  = true;
+        seaLabel = 'AT SEA';     seaTime = null;         seaPrimary = false;
+        biLabel  = 'FROM BBI';   biTime  = next.depart;  biPrimary  = true;
       } else {
-        biLabel  = 'DEPARTS BBI'; biTime  = next.depart; biPrimary  = true;
-        seaLabel = 'ARRIVES SEA'; seaTime = next.arrive;  seaPrimary = false;
+        biLabel  = 'FROM BBI'; biTime  = next.depart; biPrimary  = true;
+        seaLabel = 'TO SEA';   seaTime = next.arrive;  seaPrimary = false;
       }
     } else if (lvApproaching) {
       seaLabel = 'DEPARTED SEA'; seaTime = actualDepart || next.depart; seaPrimary = false;
@@ -1085,9 +1161,10 @@ function renderSchedule() {
     return isForward ? pct : (100 - pct);
   };
   const barPct    = computeBarPct();
-  const ferryRot  = ((direction === 'SEA-BI') !== lvApproaching) ? 90 : -90;
-  const vesselClr = getVesselColor(next.vessel);
-  const ferryPinSvg = `<svg width="34" height="34" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"
+  const visPct    = 100 - barPct;   // visual coord: BBI=0 (left), SEA=100 (right)
+  const ferryRot  = ((direction === 'SEA-BI') !== lvApproaching) ? -90 : 90;
+  const vesselClr = getVesselColor(featVessel);
+  const ferryPinSvg = `<svg width="40" height="40" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"
     style="transform:rotate(${ferryRot}deg);overflow:visible;display:block">
     <path fill="currentColor" d="M32 5 C 40 13, 44 21, 44 29 L 44 54 C 44 57, 42 59, 39 59 L 25 59 C 22 59, 20 57, 20 54 L 20 29 C 20 21, 24 13, 32 5 Z"/>
     <path fill="#0b1a2e" fill-opacity="0.32" d="M32 13 C 37.5 19, 40 25, 40 30 L 40 51 C 40 53, 38.5 54.5, 36.5 54.5 L 27.5 54.5 C 25.5 54.5, 24 53, 24 51 L 24 30 C 24 25, 26.5 19, 32 13 Z"/>
@@ -1097,14 +1174,14 @@ function renderSchedule() {
   const isSeaBI   = direction === 'SEA-BI';
   // destIsBI: true when vessel is heading toward BI (XOR with lvApproaching which reverses it)
   const destIsBI  = isSeaBI !== Boolean(lvApproaching);
-  const seaDotCls = cardState === 'at-dock'
+  const seaDotCls = atDock
     ? (lvAtOther
         ? (isSeaBI ? 'ep-dot--hollow' : 'ep-dot--docked')   // vessel at other terminal
         : (isSeaBI ? 'ep-dot--docked' : 'ep-dot--hollow'))  // vessel at dep terminal
     : cardState === 'fallback'
     ? 'ep-dot--hollow'
     : (destIsBI ? 'ep-dot--hollow' : 'ep-dot--destination');
-  const biDotCls  = cardState === 'at-dock'
+  const biDotCls  = atDock
     ? (lvAtOther
         ? (isSeaBI ? 'ep-dot--docked' : 'ep-dot--hollow')   // vessel at other terminal
         : (isSeaBI ? 'ep-dot--hollow' : 'ep-dot--docked'))  // vessel at dep terminal
@@ -1123,53 +1200,76 @@ function renderSchedule() {
   }[cardState] || '';
   const cd = (cardState !== 'fallback') ? countdownInfo(cdTarget) : { text: '', cls: '' };
 
+  // ── Lead metric (the actionable hero), trust signal, last-boat ──
+  const asofText = lastUpdate ? `as of ${fmtTime(lastUpdate)}` : '';
+  const lastDepTime = departures.length ? departures[departures.length - 1].depart : null;
+  const showLast = lastDepTime && upcoming.length <= 3;
+  let leadHTML = '';
+  if (cardState === 'oos') {
+    leadHTML = `<div class="nc-lead"><span class="nc-lead-lbl" style="color:var(--mid)">Status</span>
+      <div class="nc-lead-val"><span class="nc-lead-num" style="font-size:26px;color:var(--mid)">Out of service</span></div></div>`;
+  } else if (cardState !== 'fallback') {
+    const leadIsDepart = atDock || lvApproaching;
+    const leadTarget = leadIsDepart ? next.depart : (arriveTime || next.depart);
+    const lm = minsTo(leadTarget);
+    let big, unit = '';
+    if (lm < 0)        { big = 'Now'; }
+    else if (lm < 60)  { big = String(lm); unit = 'min'; }
+    else               { big = `${Math.floor(lm / 60)}h ${lm % 60}m`; }
+    const leadLbl = leadIsDepart ? 'Departs in' : 'Arrives in';
+    let delayTag = '';
+    if (cardState === 'delayed' && next.arrive && arriveTime) {
+      const late = Math.round((arriveTime - next.arrive) / 60000);
+      if (late > 0) delayTag = `<span class="delay-tag">${late}m late</span>`;
+    }
+    leadHTML = `<div class="nc-lead">
+      <span class="nc-lead-lbl">${leadLbl}</span>
+      <div class="nc-lead-val"><span class="nc-lead-num" id="ncLeadNum">${big}</span>${unit ? `<span class="nc-lead-unit">${unit}</span>` : ''}</div>
+      ${delayTag}
+    </div>`;
+  }
+
   // ── Featured card (renders into #schedFeatured) ────────
   if (cardState === 'fallback') {
     featWrap.innerHTML = '';
   } else {
     featWrap.innerHTML = `
-      <div class="next-card" id="nextCard" data-state="${cardState}">
+      <div class="next-card" id="nextCard" data-state="${cardState}" style="--vc:${vesselClr}">
         <div class="nc-header">
           <div class="nc-vessel">
             <span class="nc-vessel-icon">⛴</span>
-            <span class="nc-vessel-name" style="color:${vesselClr}">${next.vessel || 'Vessel TBD'}</span>
+            <span class="nc-vessel-name" style="color:${vesselClr}">${featVessel || 'Vessel TBD'}</span>
             <span class="nc-badge ${badgeCls}">${badgeText}</span>
           </div>
-          <div class="nc-pill ${pillCls}" id="cdPill">${cd.text}</div>
+          ${asofText ? `<span class="nc-asof">${asofText}</span>` : ''}
         </div>
+        ${leadHTML}
         <div class="nc-times">
-          <div class="nc-col ${seaPrimary ? 'nc-col-primary' : 'nc-col-secondary'}">
-            <div class="nc-col-label">${seaLabel}</div>
-            <div class="nc-col-time">
-              <span class="nc-t-big">${seaT}</span><span class="nc-t-ampm">${seaAp}</span>
-            </div>
-          </div>
           <div class="nc-col ${biPrimary ? 'nc-col-primary' : 'nc-col-secondary'}">
             <div class="nc-col-label">${biLabel}</div>
             <div class="nc-col-time">
               <span class="nc-t-big">${biT}</span><span class="nc-t-ampm">${biAp}</span>
             </div>
           </div>
-        </div>
-        <div class="nc-route-wrap">
-          <div class="nc-track-row" style="--vc:${vesselClr}">
-            <div class="nc-track-ep-wrap">
-              <div class="ep-dot ${seaDotCls}"><div class="ep-core"></div><div class="ep-ring"></div></div>
-              <span class="nc-track-label">SEA</span>
-            </div>
-            <div class="nc-track-line">
-              <div class="nc-track-fill" id="ncTrackFill" style="${atDock ? 'width:0' : isSeaBI ? 'left:0;width:'+barPct.toFixed(1)+'%' : 'left:'+barPct.toFixed(1)+'%;width:'+(100-barPct).toFixed(1)+'%'}"></div>
-              <div class="nc-vessel-pin" id="ncPin" style="${atDock ? 'display:none' : 'left:'+barPct.toFixed(1)+'%'}">
-                <div class="nc-pin-icon">${ferryPinSvg}</div>
-                ${!atDock ? `<div class="nc-pin-time" id="ncPinTime">${cd.text}</div>` : ''}
-              </div>
-            </div>
-            <div class="nc-track-ep-wrap">
-              <div class="ep-dot ${biDotCls}"><div class="ep-core"></div><div class="ep-ring"></div></div>
-              <span class="nc-track-label">BBI</span>
+          <div class="nc-col ${seaPrimary ? 'nc-col-primary' : 'nc-col-secondary'}">
+            <div class="nc-col-label">${seaLabel}</div>
+            <div class="nc-col-time">
+              <span class="nc-t-big">${seaT}</span><span class="nc-t-ampm">${seaAp}</span>
             </div>
           </div>
-          ${footerText ? `<div class="nc-next-line">${footerText}</div>` : ''}
+        </div>
+        <div class="nc-route-wrap">
+          <div class="nc-track-row">
+            <div class="ep-dot ${biDotCls}"><div class="ep-core"></div><div class="ep-ring"></div></div>
+            <div class="nc-track-line">
+              <div class="nc-track-fill" id="ncTrackFill" style="${atDock ? 'width:0' : isSeaBI ? 'left:'+visPct.toFixed(1)+'%;width:'+(100-visPct).toFixed(1)+'%' : 'left:0;width:'+visPct.toFixed(1)+'%'}"></div>
+              <div class="nc-vessel-pin" id="ncPin" style="${atDock ? 'display:none' : 'left:'+visPct.toFixed(1)+'%'}">
+                <div class="nc-pin-icon">${ferryPinSvg}</div>
+              </div>
+            </div>
+            <div class="ep-dot ${seaDotCls}"><div class="ep-core"></div><div class="ep-ring"></div></div>
+          </div>
+          ${(footerText || showLast) ? `<div class="nc-next-line">${footerText || ''}${footerText && showLast ? ' · ' : ''}${showLast ? `<span class="nc-lastboat">Last boat ${fmtTime(lastDepTime)}</span>` : ''}</div>` : ''}
         </div>
       </div>`;
   }
@@ -1183,17 +1283,18 @@ function renderSchedule() {
       const { t, ap } = splitTime(d.depart);
       const { t: at, ap: aap } = splitTime(d.arrive);
       const { text: cdText, cls: cdCls } = countdownInfo(d.depart);
+      const cdLabel = /^\d/.test(cdText) ? 'in ' + cdText : cdText;
       html += `
         <div class="sail-row">
-          <div class="sail-main">
-            <div class="sail-vessel">${d.vessel}</div>
+          <div class="sail-times">
             <div class="sail-dep-time"><span class="sail-dep-t">${t}</span><span class="sail-ampm"> ${ap}</span></div>
+            <span class="sail-arrow">→</span>
+            <div class="sail-arr-time"><span class="sail-arr-t">${at}</span><span class="sail-arr-ampm"> ${aap}</span></div>
           </div>
-          <div class="sail-eta">
-            <div class="sail-eta-lbl">ETA</div>
-            <div class="sail-eta-row"><span class="sail-arrow">→</span><span class="sail-arr-t">${at}</span><span class="sail-arr-ampm"> ${aap}</span></div>
+          <div class="sail-right">
+            <span class="sail-pill ${cdCls}">${cdLabel}</span>
+            <div class="sail-vtag"><span class="sail-vdot"></span><span class="sail-vname">${d.vessel}</span></div>
           </div>
-          <span class="sail-pill ${cdCls}">${cdText}</span>
         </div>`;
     });
     html += `</div>`;
@@ -1206,7 +1307,7 @@ function renderSchedule() {
   html += `
     <div class="section-label" style="margin-top:6px">Full Schedule</div>
     <button class="sched-toggle" id="schedToggle">
-      <span>Today · ${total} sailings${remaining < total ? ` · ${remaining} remaining` : ''}</span>
+      <span>Today · ${total} sailings${remaining < total ? ` · ${remaining} left` : ''}${lastDepTime ? ` · last ${fmtTime(lastDepTime)}` : ''}</span>
       <span class="sched-chevron ${schedOpen ? 'open' : ''}" id="schedChevron">▼</span>
     </button>
     <div class="sched-list ${schedOpen ? 'open' : ''}" id="schedList">`;
@@ -1235,7 +1336,7 @@ function renderSchedule() {
 
   const nextCardEl = document.getElementById('nextCard');
   function updateProgress() {
-    if (!nextCardEl || cardState === 'fallback' || cardState === 'at-dock') return;
+    if (!nextCardEl || cardState === 'fallback' || cardState === 'at-dock' || cardState === 'oos') return;
     const totalTrip = (lvApproaching && actualDepart && approachEta)
       ? approachEta - actualDepart
       : scheduledTripMs;
@@ -1246,14 +1347,15 @@ function renderSchedule() {
     if (!isForward) pct = 100 - pct;
     const pin  = document.getElementById('ncPin');
     const fill = document.getElementById('ncTrackFill');
-    if (pin)  pin.style.left = pct.toFixed(1) + '%';
+    const visPct = 100 - pct;   // BBI=0 (left), SEA=100 (right)
+    if (pin)  pin.style.left = visPct.toFixed(1) + '%';
     if (fill) {
       if (isForward) {
-        fill.style.left  = '0';
-        fill.style.width = pct.toFixed(1) + '%';
+        fill.style.left  = visPct.toFixed(1) + '%';
+        fill.style.width = (100 - visPct).toFixed(1) + '%';
       } else {
-        fill.style.left  = pct.toFixed(1) + '%';
-        fill.style.width = (100 - pct).toFixed(1) + '%';
+        fill.style.left  = '0';
+        fill.style.width = visPct.toFixed(1) + '%';
       }
     }
   }
@@ -1350,7 +1452,9 @@ function updateMap() {
   if (!routePath || !markersG) return;
 
   const L  = routePath.getTotalLength();
-  const rv = routeVessels();
+  // Draw the featured vessel last so it sits on top and its color matches the card.
+  const rv = routeVessels().slice().sort((a, b) =>
+    (a.VesselName === featuredVessel ? 1 : 0) - (b.VesselName === featuredVessel ? 1 : 0));
   const parts = [];
   const dockedAtBI  = [];
   const dockedAtSEA = [];
@@ -1385,7 +1489,7 @@ function updateMap() {
     const laneSign = seaBI ? -1 : 1;
     const mx = pt.x + (-tdy / tlen) * LANE * laneSign;
     const my = pt.y + ( tdx / tlen) * LANE * laneSign;
-    const sf = `drop-shadow(0 0 6px color-mix(in srgb,${color} 55%,transparent)) drop-shadow(0 0 14px color-mix(in srgb,${color} 28%,transparent))`;
+    const sf = `drop-shadow(0 0 4px color-mix(in srgb,${color} 42%,transparent)) drop-shadow(0 0 10px color-mix(in srgb,${color} 16%,transparent))`;
     parts.push(
       `<g transform="translate(${mx.toFixed(1)},${my.toFixed(1)})" data-vname="${v.VesselName}" style="cursor:pointer">` +
       `<g transform="rotate(${ang.toFixed(1)}) translate(-20,-20)" style="color:${color};filter:${sf}">` +
@@ -1432,6 +1536,28 @@ function setStatus(state) {
   else if (state === 'live')    { dot.className = 'live-dot live';    text.textContent = lastUpdate ? `Updated ${elapsed(lastUpdate)}` : 'Live'; }
   else if (state === 'partial') { dot.className = 'live-dot partial'; text.textContent = 'Schedule · vessels offline'; }
   else if (state === 'stale')   { dot.className = 'live-dot stale';   text.textContent = lastUpdate ? `Stale · ${elapsed(lastUpdate)}` : 'Offline'; }
+
+  const banner = document.getElementById('dataBanner');
+  if (banner) {
+    if (state === 'partial')    banner.innerHTML = `<div class="data-banner"><span class="dot"></span>Live vessel positions are temporarily unavailable — showing scheduled times.</div>`;
+    else if (state === 'stale') banner.innerHTML = `<div class="data-banner"><span class="dot"></span>Data may be out of date — tap ↺ to refresh.</div>`;
+    else                        banner.innerHTML = '';
+  }
+}
+
+// ── Route-vessels legend overlaid on the map (the two boats + their ETAs) ─
+function renderMapLegend() {
+  const el = document.getElementById('mapLegend');
+  if (!el) return;
+  const onRoute = (Array.isArray(vesselList) ? vesselList : []).filter(v =>
+    v.InService && [7, 3].includes(v.DepartingTerminalID) && [7, 3].includes(v.ArrivingTerminalID));
+  if (!onRoute.length) { el.innerHTML = ''; return; }
+  el.innerHTML = onRoute.slice(0, 2).map(v => {
+    const clr = getVesselColor(v.VesselName);
+    const eta = parseWSDot(v.Eta);
+    const sub = v.AtDock ? 'at dock' : (eta ? `ETA ${fmtTime(eta)}` : 'underway');
+    return `<div class="map-legend-row"><span class="lg-dot" style="background:${clr}"></span>${v.VesselName} <span class="lg-sub">${sub}</span></div>`;
+  }).join('');
 }
 
 function showError(msg) {
@@ -1483,6 +1609,7 @@ async function refresh(forceSchedReload) {
     renderAlerts();
     renderVesselStrip();
     updateMap();
+    renderMapLegend();
     // Show amber "partial" state when vessel API failed but schedule is available
     setStatus(vesselsOk ? 'live' : 'partial');
 
@@ -1508,6 +1635,45 @@ document.addEventListener('DOMContentLoaded', () => {
   initMap();
   initMapPopup();
 
+  let userTouchedTab = false;
+
+  // ── Smart default direction: remembered choice → geolocation → time-of-day ──
+  function applyDirection(dir) {
+    direction = dir;
+    document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.dir === dir));
+  }
+  function pickDefaultDirection() {
+    try { const s = localStorage.getItem('ferry_dir_v1'); if (s === 'SEA-BI' || s === 'BI-SEA') return s; } catch (e) {}
+    return (new Date().getHours() < 12) ? 'BI-SEA' : 'SEA-BI'; // AM commute heads to Seattle
+  }
+  applyDirection(pickDefaultDirection());
+
+  let savedDir = null;
+  try { savedDir = localStorage.getItem('ferry_dir_v1'); } catch (e) {}
+  if (!savedDir && navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition(pos => {
+      const { latitude: la, longitude: lo } = pos.coords;
+      const dBI  = Math.hypot(la - 47.622, lo + 122.511);   // Bainbridge terminal
+      const dSEA = Math.hypot(la - 47.603, lo + 122.337);   // Seattle terminal
+      const dir = dBI < dSEA ? 'BI-SEA' : 'SEA-BI';          // on Bainbridge → heading to Seattle
+      if (dir !== direction && !userTouchedTab) {
+        applyDirection(dir); renderAlerts(); if (schedData) renderSchedule();
+      }
+    }, () => {}, { timeout: 4000, maximumAge: 600000 });
+  }
+
+  // ── Build tag hidden by default; long-press the route name to reveal ──
+  const routeNameEl = document.querySelector('.route-name');
+  const buildTagEl  = document.getElementById('buildTag');
+  if (routeNameEl && buildTagEl) {
+    let lpTimer;
+    routeNameEl.addEventListener('pointerdown', () => {
+      lpTimer = setTimeout(() => buildTagEl.classList.toggle('revealed'), 600);
+    });
+    ['pointerup', 'pointerleave', 'pointercancel'].forEach(ev =>
+      routeNameEl.addEventListener(ev, () => clearTimeout(lpTimer)));
+  }
+
   // Render cached schedule immediately so the UI appears without waiting for API
   const bootCache = getCachedSchedule();
   if (bootCache) {
@@ -1526,6 +1692,8 @@ document.addEventListener('DOMContentLoaded', () => {
       document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
       tab.classList.add('active');
       direction = tab.dataset.dir;
+      userTouchedTab = true;
+      try { localStorage.setItem('ferry_dir_v1', direction); } catch (e) {}
       schedOpen = false;
       renderAlerts();
       if (schedData) renderSchedule();
@@ -1551,5 +1719,6 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 });
 </script>
+
 </body>
 </html>
