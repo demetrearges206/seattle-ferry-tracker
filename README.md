@@ -7,11 +7,22 @@ Real-time WSDOT Seattle ↔ Bainbridge Island ferry tracker. Single self-contain
 ## What it does
 
 - **Current Sailing card** — shows the active or next departure with live vessel status (At Dock / Sailing / Arriving), ETA countdown pill, animated progress track with ferry icon that moves in real time, and return departure time
-- **Direction toggle** — switch between Seattle → Bainbridge and Bainbridge → Seattle
-- **Upcoming sailings** — next 3 departures with scheduled arrival times
-- **Full schedule toggle** — expand to see the complete day's timetable
-- **Live Vessels map** — interactive Leaflet map with per-vessel color-coded markers that rotate by heading; updates every 60 seconds
-- **Alerts** — active WSDOT service bulletins
+- **Direction toggle** — switch between SEA → BBI and BBI → SEA
+- **Upcoming sailings** — next 3 departures (after the active sailing) with vessel name, scheduled arrival, and countdown pill
+- **Full schedule** — expand to see the complete day's timetable
+- **Route map** — inline SVG map of the SEA–BBI corridor with animated vessel markers that rotate by heading; terminal labels expand with pulse dots when a vessel is docked; tap any vessel for a detail popup with speed, ETA, and a Leaflet miniMap
+- **Alerts** — active WSDOT service bulletins and terminal wait times
+
+## Vessel card states
+
+| State | Condition |
+|-------|-----------|
+| **At Dock** | Vessel tied up at departure terminal |
+| **Sailing** | Underway, ETA > 5 min |
+| **Arriving** | Underway, ETA ≤ 5 min |
+| **Delayed** | Underway, running > 5 min late |
+| **AT BBI / AT SEA** | Vessel docked at the wrong terminal — must cross first |
+| *Approaching* | Vessel on return leg heading back to pick up passengers (shown as Sailing/Arriving on the tab it's serving) |
 
 ## Data sources
 
@@ -62,10 +73,17 @@ The deploy workflow (`.github/workflows/pages.yml`) automatically inlines the In
 | r35 | Map above Upcoming section; countdown pill "to arrival" sublabel; return dep in footer |
 | r36–r43 | Various stability fixes; direction toggle; alerts section |
 | r44–r50 | Custom ferry SVG map markers; per-vessel stable color palette; vessel strip redesign |
-| r51 | Card redesign from Figma: progress track at bottom, SEA/BI terminal labels, ferry icon on track |
+| r51 | Card redesign from Figma: progress track at bottom, SEA/BBI terminal labels, ferry icon on track |
 | r52 | Ferry icon moves along track based on live ETA; `computeBarPct()` driven by `cdTarget` |
 | r53 | Fixed `lvApproaching` — vessel on return leg now shows sailing/arriving, not at-dock |
-| r54 | Fixed swapped column labels for `lvApproaching` on SEA→BI tab |
+| r54 | Fixed swapped column labels for `lvApproaching` on SEA→BBI tab |
 | r55 | Fixed ferry icon rotation direction (XOR tab direction with `lvApproaching`) |
-| r56 | Fixed upcoming section starting index (`slice(0,3)` not `slice(1,4)`); removed top gradient |
-| r57 | Fixed at-dock track fill (0% not barPct%); fixed all-amber docked vessels (always use palette color) |
+| r56 | Fixed upcoming section starting index; removed top gradient |
+| r57 | Fixed at-dock track fill (0% not barPct%); fixed palette color always used for docked vessels |
+| r58–r64 | Navy color theme; card polish; popup improvements |
+| r65–r68 | Replaced Leaflet vessel map with inline SVG route map; terminal dock dots with pulse animation; Leaflet moved to vessel tap popup (miniMap) |
+| r69 | Terminal abbrev BI → BBI; ARRIVES label fix; vessel popup tap fix; ferry icon enlarged to 34px |
+| r70 | Added `lvAtOther` state: vessel docked at wrong terminal now shows "AT SEA" / "AT BBI" with correct dot positions |
+| r71 | Map centering fix; upcoming table redesigned with ETA column + countdown pill; active sailing removed from upcoming list |
+| r72 | Terminal label dot pulse clearance padding; ETA stacked layout in upcoming rows |
+| r73 | Fixed null-ETA crash: `minsTo(null)` guard on `approachEta` prevents false "Arriving" state when WSDOT omits ETA briefly after departure |
