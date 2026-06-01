@@ -4,9 +4,10 @@
 
 Real-time WSDOT Seattle ↔ Bainbridge Island ferry tracker. Single deliverable: `ferry.html` — a fully self-contained HTML file with all CSS, JS, and Leaflet 1.9.4 inlined. No build step. Deployed to GitHub Pages at `https://demetrearges206.github.io/seattle-ferry-tracker/ferry.html`.
 
-## Current state (r74)
+## Current state (r75)
 
-- `const BUILD = 'r74'` in ferry.html — bump on every change
+- `const BUILD = 'r75'` in ferry.html — bump on every change
+- **r75:** wired up a real **Leaflet mini-map** in the vessel-tap popup (was dead code before) — Leaflet 1.9.4 inlined, OSM tiles. See [Map implementation](#map-implementation) §2.
 - Inter font inlined as base64 at deploy time via `.github/workflows/pages.yml` (not CDN)
 - Direction toggle: `SEA-BBI` (Seattle → Bainbridge) or `BBI-SEA` (Bainbridge → Seattle). Tab labels read **"To Bainbridge" / "To Seattle"**. Default direction is smart: remembered choice (`ferry_dir_v1`) → geolocation → time-of-day (before noon → `BI-SEA`).
 - Featured card (`#schedFeatured`) renders above the Vessels/map section
@@ -20,7 +21,7 @@ Real-time WSDOT Seattle ↔ Bainbridge Island ferry tracker. Single deliverable:
 
 ## File map
 
-- `ferry.html` — entire app (~126 KB; grows to ~225 KB after the deploy step inlines Inter as base64)
+- `ferry.html` — entire app (~288 KB with Leaflet 1.9.4 inlined; grows further after the deploy step inlines Inter as base64)
 - `.github/workflows/pages.yml` — GitHub Pages deploy; inlines Inter font as base64 (the only workflow; not a workaround — this publishes the site)
 - `scripts/wsdot.py` — local dev tool: fetches live WSDOT vessel/schedule data and writes readable snapshots to `api-snapshots/`. Run `python3 scripts/wsdot.py [vessels|schedule|all]`
 - `api-snapshots/` — local scratch output from `scripts/wsdot.py` (gitignored, not committed)
@@ -331,10 +332,12 @@ Two separate maps coexist:
 - Pan/zoom via `initMapInteraction()` — touch pinch + drag, double-tap to reset
 - Vessel tap → `initMapPopup()` → card slides up with vessel detail (speed, ETA, dep time)
 
-**2. Leaflet miniMap** (`#miniMapEl`) — inside vessel detail popup
-- Leaflet 1.9.4 fully inlined; OSM tile layer, no API key
-- Created fresh on popup open (`openMiniMap()`), destroyed on close
-- Shows vessel GPS position + heading on interactive map
+**2. Leaflet miniMap** (`#miniMapEl`) — inside vessel detail popup (wired up in **r75**)
+- Leaflet 1.9.4 **inlined** as a `<style>`+`<script>` pair in `<head>` (sets global `L`); **OSM raster tiles** (`https://tile.openstreetmap.org/{z}/{x}/{y}.png`), no API key
+- `openMiniMap(vesselName)` is called from `initMapPopup()`'s `show()`; `closeMiniMap()` from `hide()`. Map created fresh on open, `.remove()`d on close (with the `_leaflet_id` cleanup)
+- Shows the vessel GPS position (`Lat`/`Lon`) + heading via a `divIcon`; falls back to a SEA↔BBI `fitBounds` when no position
+- **History:** before r75 `openMiniMap`/`closeMiniMap` were orphaned dead code referencing a Leaflet that was never loaded and undefined `PUGET_SOUND_LAND`/`LAND_STYLE` (and the wrong `vessel.Latitude/Longitude` field names). r75 inlined Leaflet, swapped the missing geoJSON land for OSM tiles, fixed the field names, and wired open/close to the popup
+- **Layout:** the popup (`#map-popup`) was moved out of `.map-frame` (which is `overflow:hidden`, 220px, fixed-aspect SVG that would letterbox if grown) to be a child of `.map-section` (`position:relative`) so the 124px map can extend below the frame without being clipped
 
 ---
 
@@ -354,7 +357,7 @@ Two separate maps coexist:
 ## Workflow
 
 1. Edit `ferry.html`
-2. Bump `const BUILD` (r74 → r75, etc.)
+2. Bump `const BUILD` (r75 → r76, etc.)
 3. Push directly to `main` — `git push origin main` (working on `main` directly in Codespaces)
 4. GitHub Pages auto-deploys in ~30s
 5. User may need hard cache clear on iOS Safari (`?bust=N` appended to URL)
