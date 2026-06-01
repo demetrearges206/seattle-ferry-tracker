@@ -528,7 +528,7 @@
 'use strict';
 
 // ── Build version — bump this string on every deploy ─────
-const BUILD = 'r72';
+const BUILD = 'r73';
 
 // ── Config ───────────────────────────────────────────────
 const API_KEY   = 'ff39cd9c-729e-40ac-b740-1cebec6226f9';
@@ -998,7 +998,7 @@ function renderSchedule() {
   } else if (lv.AtDock) {
     cardState = 'at-dock';
   } else if (lvApproaching) {
-    cardState = minsTo(approachEta) <= 5 ? 'arriving' : 'sailing';
+    cardState = (approachEta && minsTo(approachEta) <= 5) ? 'arriving' : 'sailing';
   } else if (!lvOnRoute) {
     cardState = 'at-dock';
   } else if (liveEta && minsTo(liveEta) <= 5) {
@@ -1016,7 +1016,7 @@ function renderSchedule() {
   const actualDepart = lvApproaching
     ? ((lv && lv.LeftDock) ? parseWSDot(lv.LeftDock) : null)
     : ((!atDock && lvOnRoute && lv && lv.LeftDock) ? parseWSDot(lv.LeftDock) : next.depart);
-  const cdTarget    = atDock ? next.depart : arriveTime;
+  const cdTarget    = atDock ? next.depart : (arriveTime || next.depart);
   const destName    = direction === 'SEA-BI' ? 'Bainbridge' : 'Seattle';
   const depTermName = direction === 'SEA-BI' ? 'Seattle' : 'Bainbridge';
   const returnDep   = (!lvApproaching && cardState !== 'fallback') ? getReturnDeparture(arriveTime) : null;
