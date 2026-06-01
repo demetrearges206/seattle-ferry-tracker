@@ -2,17 +2,17 @@
 
 ## Project goal
 
-Real-time WSDOT Seattle ↔ Bainbridge Island ferry tracker. Single deliverable: `ferry.html` — a fully self-contained HTML file with all CSS, JS, and Leaflet 1.9.4 inlined. No build step. Deployed to GitHub Pages at `https://demetrearges206.github.io/seattle-ferry-tracker/ferry.html`.
+Real-time WSDOT Seattle ↔ Bainbridge Island ferry tracker. Single deliverable: `ferry.html` — a fully self-contained HTML file with all CSS and JS inlined (no map library, no Leaflet — the map is a hand-built inline SVG). No build step. Deployed to GitHub Pages at `https://demetrearges206.github.io/seattle-ferry-tracker/ferry.html`.
 
-## Current state (r75)
+## Current state (r77)
 
-- `const BUILD = 'r75'` in ferry.html — bump on every change
-- **r75:** wired up a real **Leaflet mini-map** in the vessel-tap popup (was dead code before) — Leaflet 1.9.4 inlined, OSM tiles. See [Map implementation](#map-implementation) §2.
+- `const BUILD = 'r77'` in ferry.html — bump on every change
+- **r77:** removed Leaflet and the vessel-popup mini-map entirely (r75 had added them; they provided no value over the existing SVG map). The vessel-tap popup is text-only. See [Map implementation](#map-implementation).
 - Inter font inlined as base64 at deploy time via `.github/workflows/pages.yml` (not CDN)
 - Direction toggle: `SEA-BBI` (Seattle → Bainbridge) or `BBI-SEA` (Bainbridge → Seattle). Tab labels read **"To Bainbridge" / "To Seattle"**. Default direction is smart: remembered choice (`ferry_dir_v1`) → geolocation → time-of-day (before noon → `BI-SEA`).
 - Featured card (`#schedFeatured`) renders above the Vessels/map section
 - Upcoming section (`#schedContent`) shows `upcoming.slice(1, 4)` — skips the active sailing (already in featured card), shows next 3
-- Vessel map markers: teardrop SVG icon in inline SVG map, per-vessel palette color; Leaflet miniMap in vessel popup. Featured vessel is drawn **last** (paints on top); a `#mapLegend` overlay lists the two route boats + ETAs
+- Vessel map markers: teardrop SVG icon in inline SVG map, per-vessel palette color (underway vessels only — docked boats show as terminal dots). Vessel tap → text popup. Featured vessel is drawn **last** (paints on top); a `#mapLegend` overlay lists the two route boats + ETAs
 - Progress track at bottom of featured card — **BBI always left (0%), SEA always right (100%)** to match the map; ferry icon moves along it via `visPct = 100 - barPct`
 - **r74 redesign — color = two independent axes:** **vessel color = identity** (`--vc`, set inline on `.next-card`; drives eyebrow strip, vessel name, lead metric, route track), **status color = state** (the badge only). New status palette avoids the vessel gold/green band. Card gained an **eyebrow ribbon** (`::before` in `--vc`), an **"as of HH:MM"** freshness stamp, and a big **lead metric** ("Departs in / Arrives in" + number) as the hero. Build tag hidden — long-press the route name to reveal.
 - **`getDirectionVessel()` + `featuredVessel` global:** the card features the vessel actually positioned for the selected direction (from live positions), not the schedule's planned hull
@@ -21,7 +21,7 @@ Real-time WSDOT Seattle ↔ Bainbridge Island ferry tracker. Single deliverable:
 
 ## File map
 
-- `ferry.html` — entire app (~288 KB with Leaflet 1.9.4 inlined; grows further after the deploy step inlines Inter as base64)
+- `ferry.html` — entire app (~123 KB; grows after the deploy step inlines Inter as base64)
 - `.github/workflows/pages.yml` — GitHub Pages deploy; inlines Inter font as base64 (the only workflow; not a workaround — this publishes the site)
 - `scripts/wsdot.py` — local dev tool: fetches live WSDOT vessel/schedule data and writes readable snapshots to `api-snapshots/`. Run `python3 scripts/wsdot.py [vessels|schedule|all]`
 - `api-snapshots/` — local scratch output from `scripts/wsdot.py` (gitignored, not committed)
@@ -160,7 +160,7 @@ let cdTimer = null;         // interval handle for 10s countdown ticks
 |----------|---------|
 | `refresh(fullRefresh)` | Main fetch loop — `Promise.allSettled` over all APIs, updates state, re-renders |
 | `renderSchedule()` | Featured card → `#schedFeatured`; upcoming + full schedule → `#schedContent` |
-| `renderVessels()` | Updates Leaflet map markers + vessel strip |
+| `renderVessels()` | Updates inline-SVG map markers + vessel strip |
 | `renderWaitTimes()` | Terminal wait table (`#waitContent`) |
 | `getDepartures()` | Today's departures for current `direction` from `scheduleData` |
 | `getReturnDeparture(afterTime)` | Temporarily swaps `direction`; gets next opposite-direction departure |
@@ -183,7 +183,7 @@ let cdTimer = null;         // interval handle for 10s countdown ticks
 <div id="schedFeatured">   ← featured card (1 card)
 <button id="vesselLabel">  ← Live Vessels toggle
 <div id="vesselStrip">     ← vessel icon pills
-<div class="map-section">  ← Leaflet map (#ferry-map)
+<div class="map-section">  ← inline SVG route map (#ferry-map-svg)
 <div id="schedContent">    ← upcoming rows + full schedule toggle
 <div id="waitContent">     ← terminal wait times / alerts
 ```
@@ -323,21 +323,14 @@ cdTimer = setInterval(updateProgress + updateCountdowns, 10s)
 
 ## Map implementation
 
-Two separate maps coexist:
-
-**1. Inline SVG route map** (`#ferry-map-svg`) — main vessel section
+**One map only: the inline SVG route map** (`#ferry-map-svg`) — main vessel section. **No Leaflet, no OSM, no real-world map tiles** anywhere in the app (see history below).
 - Static SVG with hand-crafted Puget Sound landmass paths, dashed bezier route, terminal label `<g>` elements
-- Vessel markers injected into `<g id="vessel-markers">` as teardrop SVG paths via `innerHTML`, rotated by `Heading`
+- Vessel markers injected into `<g id="vessel-markers">` as teardrop SVG paths via `innerHTML`, rotated by `Heading`. **Only vessels that are underway get a tappable marker** — docked vessels `return` early in `updateMap()` and are shown as dots on the terminal labels instead
 - Terminal labels (`term-bi`, `term-sea`) dynamically resize via `updateTermLabel()` to show animated dock dots
-- Pan/zoom via `initMapInteraction()` — touch pinch + drag, double-tap to reset
-- Vessel tap → `initMapPopup()` → card slides up with vessel detail (speed, ETA, dep time)
+- Pan/zoom via `initMapInteraction()` — touch pinch + drag, double-tap to reset (this is the app's own SVG interaction, not a map library)
+- Vessel tap → `initMapPopup()` → text popup with vessel detail (route, dep time, ETA, speed). **Text only — no embedded map.**
 
-**2. Leaflet miniMap** (`#miniMapEl`) — inside vessel detail popup (wired up in **r75**)
-- Leaflet 1.9.4 **inlined** as a `<style>`+`<script>` pair in `<head>` (sets global `L`); **OSM raster tiles** (`https://tile.openstreetmap.org/{z}/{x}/{y}.png`), no API key
-- `openMiniMap(vesselName)` is called from `initMapPopup()`'s `show()`; `closeMiniMap()` from `hide()`. Map created fresh on open, `.remove()`d on close (with the `_leaflet_id` cleanup)
-- Shows the vessel GPS position (`Lat`/`Lon`) + heading via a `divIcon`; falls back to a SEA↔BBI `fitBounds` when no position
-- **History:** before r75 `openMiniMap`/`closeMiniMap` were orphaned dead code referencing a Leaflet that was never loaded and undefined `PUGET_SOUND_LAND`/`LAND_STYLE` (and the wrong `vessel.Latitude/Longitude` field names). r75 inlined Leaflet, swapped the missing geoJSON land for OSM tiles, fixed the field names, and wired open/close to the popup
-- **Layout:** the popup (`#map-popup`) was moved out of `.map-frame` (which is `overflow:hidden`, 220px, fixed-aspect SVG that would letterbox if grown) to be a child of `.map-section` (`position:relative`) so the 124px map can extend below the frame without being clipped
+**History — why there's no Leaflet:** `ferry.html` long carried orphaned `openMiniMap`/`closeMiniMap` functions (Leaflet API calls to a library that was never loaded) plus a false "Leaflet 1.9.4 inlined" claim here. r75 briefly inlined Leaflet + an OSM-tile mini-map in the vessel popup, but it added no value (the main SVG map is the real UI and already pans/zooms), so **r77 removed Leaflet and the mini-map entirely** — the dead code, the inlined library, and the popup map container. Don't re-add it without a concrete reason.
 
 ---
 
@@ -357,7 +350,7 @@ Two separate maps coexist:
 ## Workflow
 
 1. Edit `ferry.html`
-2. Bump `const BUILD` (r75 → r76, etc.)
+2. Bump `const BUILD` (r77 → r78, etc.)
 3. Push directly to `main` — `git push origin main` (working on `main` directly in Codespaces)
 4. GitHub Pages auto-deploys in ~30s
 5. User may need hard cache clear on iOS Safari (`?bust=N` appended to URL)
@@ -373,7 +366,7 @@ Two separate maps coexist:
 - **Never use `lv.Eta` for future scheduled trips** — live ETA only valid for the current active trip. Upcoming rows always use `d.arrive` (scheduled).
 - **`vesselList` always defaults to `[]`** on API failure — never undefined.
 - **`getReturnDeparture()`** temporarily swaps global `direction` — must remain atomic.
-- **Leaflet miniMap** must only be created after its container is visible (`openMiniMap` uses a 50ms timeout).
+- **No map library.** The map is a hand-built inline SVG (`#ferry-map-svg`); pan/zoom is the app's own `initMapInteraction()`. Leaflet/OSM were removed in r77 — don't reintroduce a map dependency without a concrete need.
 - **`lvApproaching`**: vessel on return leg → show sailing/arriving, not at-dock. Track position, ferry rotation, and column labels all have separate `lvApproaching` branches.
 - **`lvAtOther`**: vessel docked at arrival terminal → card shows "AT BBI" / "AT SEA". Both this and `lvApproaching` affect endpoint dot classes.
 - **`approachEta` null guard**: `cardState = (approachEta && minsTo(approachEta) <= 5) ? 'arriving' : 'sailing'` — `minsTo(null)` returns a large negative (null coerces to 0) which would wrongly pass the `<= 5` check without the guard.
