@@ -69,7 +69,7 @@ Also added `cdTarget = atDock ? next.depart : (arriveTime || next.depart)` — d
 | Single `ferry.html`, no build step | Easy to inspect, version, and hard-cache-bust on iOS |
 | SVG route map, Leaflet miniMap in popup | SVG is faster and cleaner for a fixed corridor; full map UX preserved for when you want it |
 | `DepartingTerminalID` when `AtDock=true` = current terminal | Confirmed against live API; drives `lvAtOther` detection |
-| `git push origin HEAD:main` for cloud sessions | Works reliably even when session assigns a feature branch |
+| Plain `git push origin main` from Codespaces | Dev moved from code.claude.com web sessions to a Codespaces terminal — no forced feature branch, full network access. The old `git push origin HEAD:main` workaround and the git-trigger Figma/WSDOT sync workflows are gone (see CLAUDE.md "Working environment"). |
 | Bainbridge abbrev = "BBI" | Avoids confusion with RI (Rhode Island) two-letter abbreviation |
 | `upcoming.slice(1, 4)` | Index 0 is the active sailing shown in the featured card; showing it twice was redundant |
 | `approachEta &&` guard before `minsTo()` | `minsTo(null)` returns a large negative which passes `<= 5`; same pattern used for `liveEta` |

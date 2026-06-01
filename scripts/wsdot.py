@@ -1,27 +1,36 @@
 #!/usr/bin/env python3
 """
-Fetch WSDOT Traveler API snapshots and write them to api-snapshots/.
+Fetch live WSDOT Traveler API data and write readable snapshots to api-snapshots/.
 
-Triggered by .github/workflows/wsdot-snapshot.yml when api-snapshots/request.txt changes.
-Reads request.txt for keywords: vessels, schedule, all.
-Writes pretty-printed JSON + a human-readable summary markdown.
+Local dev tool — run it directly; the WSDOT API is reachable from Codespaces.
+(The old git-trigger GitHub Actions workflow existed only because the web-browser
+session couldn't reach the API. That workaround is gone.)
 
+Usage:
+    python3 scripts/wsdot.py [vessels|schedule|all]   # default: all
+
+API key resolution: $WSDOT_API_KEY, else the working key baked into ferry.html.
 API format: key is a QUERY PARAMETER (?apiaccesscode=), NOT a path segment.
-  Vessels:  GET https://www.wsdot.wa.gov/ferries/api/vessels/rest/vessellocations?apiaccesscode={key}
-  Schedule: GET https://www.wsdot.wa.gov/ferries/api/schedule/rest/scheduletoday/{dep_id}/{arr_id}/false?apiaccesscode={key}
+  Vessels:  GET {VESS_BASE}/vessellocations?apiaccesscode={key}
+  Schedule: GET {SCHED_BASE}/scheduletoday/{dep_id}/{arr_id}/false?apiaccesscode={key}
+
+Output (api-snapshots/ is gitignored — local scratch, not committed):
+  vessel-locations.json / vessel-basics.json / vessel-summary.md
+  schedule-{ABBREV}-{date}.json / schedule-summary-{date}.md
 """
 
 import json
 import os
+import sys
 import traceback
 import urllib.request
 from datetime import datetime, timezone
 
-API_KEY   = os.environ.get("WSDOT_API_KEY", "7d7a5056-0f82-4547-a870-6db3db67b9d7")
-VESS_BASE = "https://www.wsdot.wa.gov/ferries/api/vessels/rest"
+API_KEY    = os.environ.get("WSDOT_API_KEY", "ff39cd9c-729e-40ac-b740-1cebec6226f9")
+VESS_BASE  = "https://www.wsdot.wa.gov/ferries/api/vessels/rest"
 SCHED_BASE = "https://www.wsdot.wa.gov/ferries/api/schedule/rest"
-OUT_DIR   = "api-snapshots"
-TODAY     = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+OUT_DIR    = "api-snapshots"
+TODAY      = datetime.now(timezone.utc).strftime("%Y-%m-%d")
 
 # Terminal IDs
 SEA_ID = 7
@@ -32,20 +41,16 @@ ROUTES = [
     (BI_ID, SEA_ID, "BI-SEA"),
 ]
 
-log_lines = []
-
 
 def api_url(base, path):
     return f"{base}/{path}?apiaccesscode={API_KEY}"
 
 
 def fetch(url):
-    log_lines.append(f"GET {url}")
     print(f"  GET {url}")
     req = urllib.request.Request(url, headers={"Accept": "application/json"})
     with urllib.request.urlopen(req, timeout=30) as resp:
         raw = resp.read().decode()
-        log_lines.append(f"  → HTTP {resp.status} ({len(raw):,} bytes)")
         print(f"  → HTTP {resp.status} ({len(raw):,} bytes)")
         return json.loads(raw)
 
@@ -54,9 +59,7 @@ def safe_fetch(url, label):
     try:
         return fetch(url)
     except Exception as e:
-        msg = f"  ERROR {label}: {type(e).__name__}: {e}"
-        log_lines.append(msg)
-        print(msg)
+        print(f"  ERROR {label}: {type(e).__name__}: {e}")
         traceback.print_exc()
         return None
 
@@ -80,7 +83,6 @@ def fetch_vessels():
     if basics:
         save("vessel-basics.json", basics)
 
-    # Write summary
     lines = [
         f"# WSDOT Vessel Snapshot — {TODAY}",
         f"\nFetched at: {datetime.now(timezone.utc).isoformat()}\n",
@@ -166,34 +168,18 @@ def fetch_schedule():
 
 
 def main():
-    log_lines.append(f"Run at: {datetime.now(timezone.utc).isoformat()}")
-    log_lines.append(f"API_KEY prefix: {API_KEY[:8]}...")
+    keyword = (sys.argv[1] if len(sys.argv) > 1 else "all").strip().lower()
+    if keyword not in ("vessels", "schedule", "all"):
+        print(f"Unknown keyword '{keyword}'. Use: vessels | schedule | all")
+        sys.exit(1)
 
-    request_file = os.path.join(OUT_DIR, "request.txt")
-    if not os.path.exists(request_file):
-        print("No request.txt found — nothing to do.")
-        return
+    os.makedirs(OUT_DIR, exist_ok=True)
+    print(f"WSDOT snapshot · keyword={keyword} · key={API_KEY[:8]}…")
 
-    with open(request_file) as f:
-        keywords = {line.strip().lower() for line in f
-                    if line.strip() and not line.strip().startswith("#")}
-
-    print(f"Keywords: {keywords}")
-    want_all      = "all"      in keywords
-    want_vessels  = "vessels"  in keywords or want_all
-    want_schedule = "schedule" in keywords or want_all
-
-    if want_vessels:
+    if keyword in ("vessels", "all"):
         fetch_vessels()
-    if want_schedule:
+    if keyword in ("schedule", "all"):
         fetch_schedule()
-
-    if not want_vessels and not want_schedule:
-        print("No recognised keywords (vessels / schedule / all). Nothing fetched.")
-
-    with open(os.path.join(OUT_DIR, "last-run.log"), "w") as f:
-        f.write("\n".join(log_lines) + "\n")
-    print("Wrote last-run.log")
 
 
 if __name__ == "__main__":

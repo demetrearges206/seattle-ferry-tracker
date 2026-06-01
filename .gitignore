@@ -1,0 +1,9 @@
+# Local WSDOT API snapshot output — run scripts/wsdot.py to regenerate. Not committed.
+api-snapshots/
+
+# Local Claude settings (per-machine permissions, untracked)
+.claude/settings.local.json
+
+# Python bytecode cache
+__pycache__/
+*.pyc

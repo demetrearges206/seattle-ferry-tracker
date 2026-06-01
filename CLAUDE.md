@@ -19,100 +19,36 @@ Real-time WSDOT Seattle ↔ Bainbridge Island ferry tracker. Single deliverable:
 ## File map
 
 - `ferry.html` — entire app (~225 KB, all CSS/JS/Leaflet inlined)
-- `.github/workflows/pages.yml` — GitHub Pages deploy; inlines Inter font as base64
-- `.github/workflows/figma-sync-auto.yml` — auto-triggers on push when `figma-specs/request.txt` changes; fetches Figma API and commits JSON + PNG back to `main`
-- `.github/workflows/figma-sync.yml` — manual workflow_dispatch version of the same
-- `.github/scripts/figma_sync.py` — Python script that calls Figma REST API, writes `figma-specs/`
-- `figma-specs/request.txt` — one Figma node URL per line; committing here triggers auto-sync
-- `figma-specs/*.json` / `figma-specs/*.png` / `figma-specs/*-summary.md` — output from sync
-- `.github/workflows/wsdot-snapshot.yml` — auto-triggers on push when `api-snapshots/request.txt` changes; fetches live WSDOT API data and commits JSON + markdown back to `main`
-- `.github/scripts/wsdot_snapshot.py` — Python script that fetches vessellocations, vesselbasics, and schedule; writes `api-snapshots/`
-- `api-snapshots/request.txt` — keywords (`vessels`, `schedule`, `all`); committing here triggers auto-snapshot
-- `api-snapshots/*.json` / `api-snapshots/*-summary.md` — live API snapshots committed by bot
+- `.github/workflows/pages.yml` — GitHub Pages deploy; inlines Inter font as base64 (the only workflow; not a workaround — this publishes the site)
+- `scripts/wsdot.py` — local dev tool: fetches live WSDOT vessel/schedule data and writes readable snapshots to `api-snapshots/`. Run `python3 scripts/wsdot.py [vessels|schedule|all]`
+- `api-snapshots/` — local scratch output from `scripts/wsdot.py` (gitignored, not committed)
 - `design/Boat Icon/ferry-deck.svg` — source SVG for vessel map marker icon
 - `wsdot-attributes.md` — design reference: vessel list, API fields, card states, countdown pill states
 - `CLAUDE.md` — this file
 
 ---
 
-## Cloud session notes (code.claude.com)
+## Working environment (GitHub Codespaces terminal)
 
-**Branch issue:** Every code.claude.com session automatically assigns a feature branch (e.g. `claude/bold-volta-8GEoB`). The session environment instructs Claude to develop on that branch and open a PR. This conflicts with the project preference of always pushing directly to `main`.
+Development happens in a **Codespaces terminal** with full network and git access. This replaced the earlier code.claude.com web sessions, which had two limitations that no longer apply:
 
-**Workaround:** Use `git push origin HEAD:main` — this pushes the local commit to `main` regardless of what the local branch is named. The session's assigned branch is irrelevant. Changes go live in ~30s via GitHub Pages.
+- **No forced feature branch.** Work directly on `main` and push with plain `git push origin main`. (The old `git push origin HEAD:main` workaround is no longer needed.)
+- **No network egress block.** `www.wsdot.wa.gov` and `api.figma.com` are both reachable directly. The old git-trigger snapshot/sync workflows existed only to dodge that block and have been removed.
 
-**How to start a new cloud session:**
-1. Go to [code.claude.com](https://code.claude.com) and create a new session for the `demetrearges206/seattle-ferry-tracker` repo
-2. Set environment variables if needed:
-   - `FIGMA_ACCESS_TOKEN` — only needed if you want to test direct Figma MCP (currently blocked by network policy; use the git-trigger workflow instead)
-   - `WSDOT_API_KEY` — already set as a GitHub secret; not needed as an env var in the session
-3. The session will clone `main` and have full git access
+### Getting live WSDOT data
 
----
+Just call the API directly — `curl` or the helper script:
 
-## Figma workflow (IMPORTANT — read before implementing any Figma design)
-
-Direct Figma API / Figma MCP **does not work** in Claude Code cloud/web sessions — `api.figma.com` is blocked by network egress policy. `FIGMA_ACCESS_TOKEN` env var is set but irrelevant.
-
-### How it works
-
-```
-User pastes Figma node URL in chat
-  ↓
-Claude commits URL to figma-specs/request.txt and pushes to main
-  ↓
-.github/workflows/figma-sync-auto.yml triggers automatically (watches request.txt)
-  ↓
-GitHub Actions (unrestricted network) calls Figma API, fetches node JSON + renders PNG
-  ↓
-Bot commits figma-specs/<node-id>.png, figma-specs/<file-id>-nodes.json,
-  figma-specs/<file-id>-summary.md back to main
-  ↓
-Claude pulls / reads specs via local git or GitHub MCP, then implements
+```bash
+python3 scripts/wsdot.py all        # vessels + schedule → api-snapshots/ (gitignored)
+python3 scripts/wsdot.py vessels    # live positions + fleet basics only
 ```
 
-### Step-by-step when user provides a Figma URL
+The script uses `$WSDOT_API_KEY` if set, otherwise the working key baked into `ferry.html`.
 
-1. Read `figma-specs/request.txt` first (to know current contents)
-2. Write the new node URL to `figma-specs/request.txt` (one URL per line)
-3. Commit + push to `main` — the auto-sync workflow fires immediately
-4. Wait for the bot commit (watch via `git pull` or GitHub MCP `list_commits`)
-5. Read `figma-specs/<node-id>.png` (visual reference) and `figma-specs/*-summary.md` (layout tree)
-6. Implement, bump BUILD, commit + push to `main`
+### Figma
 
-**Do not attempt to call `api.figma.com` directly — it will always fail.**
-
----
-
-## WSDOT API snapshot workflow
-
-The WSDOT API (`www.wsdot.wa.gov`) is also blocked from cloud sessions. Use the same git-trigger pattern:
-
-### Step-by-step when you need live API data
-
-1. Write keyword(s) to `api-snapshots/request.txt`: `vessels`, `schedule`, or `all`
-2. Commit + push to `main` — `wsdot-snapshot.yml` fires automatically
-3. Wait for the bot commit (watch via `git pull` or GitHub MCP `list_commits`)
-4. Read `api-snapshots/vessel-summary.md` (vessel list + status) or `api-snapshots/schedule-summary-YYYY-MM-DD.md`
-
-**Available keywords:**
-- `vessels` — fetches `vessellocations` (live positions/status) + `vesselbasics` (static fleet info)
-- `schedule` — fetches today's SEA-BI and BI-SEA schedules
-- `all` — fetches everything
-
-**Output files committed by the bot:**
-- `api-snapshots/vessel-locations.json` — raw vessellocations response
-- `api-snapshots/vessel-basics.json` — raw vesselbasics response
-- `api-snapshots/vessel-summary.md` — readable table: vessel name, InService, AtDock, From/To, ETA, speed
-- `api-snapshots/schedule-SEA-BI-YYYY-MM-DD.json` — raw schedule
-- `api-snapshots/schedule-summary-YYYY-MM-DD.md` — readable sailings table
-
-**Do not attempt to call `www.wsdot.wa.gov` directly from a cloud session — it will always fail.**
-
-**Troubleshooting if the bot doesn't commit back:**
-- Check the Actions tab at `github.com/demetrearges206/seattle-ferry-tracker/actions`
-- Ensure Actions are enabled: Settings → Actions → General → Allow all actions
-- Ensure the workflow has write permission: Settings → Actions → General → Workflow permissions → Read and write
+Figma tooling has been removed for now. When design work resumes, connect a Figma MCP server in `.claude/settings.json` (`mcpServers`) — `api.figma.com` is reachable from Codespaces, so the MCP will work directly without the old git-trigger workflow.
 
 ---
 
@@ -132,7 +68,7 @@ apiUrl(base, path) → `${base}/${path}?apiaccesscode=${API_KEY}`
 | `https://www.wsdot.wa.gov/ferries/api/schedule/rest` | `schedulebulletins` | Service alerts |
 | `https://www.wsdot.wa.gov/ferries/api/terminals/rest` | `terminalwaittimes` | Terminal wait/reservation times |
 
-**API key:** Stored in `ferry.html` as `const API_KEY` and in the GitHub secret `WSDOT_API_KEY`. Demo fallback: `7d7a5056-0f82-4547-a870-6db3db67b9d7`.
+**API key:** Stored in `ferry.html` as `const API_KEY` (currently `ff39cd9c-…`, verified working) and in the GitHub secret `WSDOT_API_KEY`. `scripts/wsdot.py` reads `$WSDOT_API_KEY` or falls back to that same key. (The old public demo key `7d7a5056-…` now returns HTTP 400 — don't use it.)
 
 **Terminal IDs:**
 ```js
@@ -387,8 +323,8 @@ Two separate maps coexist:
 ## Workflow
 
 1. Edit `ferry.html`
-2. Bump `const BUILD` (r57 → r58, etc.)
-3. Push directly to `main` — use `git push origin HEAD:main` (works even when the session assigns a feature branch)
+2. Bump `const BUILD` (r73 → r74, etc.)
+3. Push directly to `main` — `git push origin main` (working on `main` directly in Codespaces)
 4. GitHub Pages auto-deploys in ~30s
 5. User may need hard cache clear on iOS Safari (`?bust=N` appended to URL)
 
@@ -416,7 +352,6 @@ Two separate maps coexist:
 
 ## Known issues
 
-- **Figma MCP in cloud**: Network blocked. Use the git-trigger workflow — it's fully automatic.
 - **CORS on `file://`**: Live API data won't load from disk. Use `npx serve .` locally.
 - **Mobile cache**: iOS Safari aggressively caches. Hard-clear or `?bust=N` after deploy.
 - **Transient two-vessel glitch**: Very briefly after one vessel docks, both vessels may appear heading the same direction as the API reports stale position data. Clears on next poll. Not worth fixing — it's a WSDOT data artifact.
