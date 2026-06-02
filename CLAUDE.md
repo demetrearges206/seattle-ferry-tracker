@@ -4,9 +4,10 @@
 
 Real-time WSDOT Seattle ↔ Bainbridge Island ferry tracker. Single deliverable: `ferry.html` — a fully self-contained HTML file with all CSS and JS inlined (no map library, no Leaflet — the map is a hand-built inline SVG). No build step. Deployed to GitHub Pages at `https://demetrearges206.github.io/seattle-ferry-tracker/ferry.html`.
 
-## Current state (r77)
+## Current state (r78)
 
-- `const BUILD = 'r77'` in ferry.html — bump on every change
+- `const BUILD = 'r78'` in ferry.html — bump on every change
+- **r78:** (1) removed the card's `.nc-asof` "as of HH:MM" stamp — the header now shows the refresh **clock time** (`Updated 6:21 AM` via `fmtTime`, was relative `elapsed()`); (2) vessel-popup ETA no longer shows a bare `—` when live `Eta` is missing — it falls back to the **scheduled arrival** (matches the card) by temporarily swapping `direction` and matching the sailing closest to `LeftDock`. Both came from visual-feedback tool comments.
 - **r77:** removed Leaflet and the vessel-popup mini-map entirely (r75 had added them; they provided no value over the existing SVG map). The vessel-tap popup is text-only. See [Map implementation](#map-implementation).
 - Inter font inlined as base64 at deploy time via `.github/workflows/pages.yml` (not CDN)
 - Direction toggle: `SEA-BBI` (Seattle → Bainbridge) or `BBI-SEA` (Bainbridge → Seattle). Tab labels read **"To Bainbridge" / "To Seattle"**. Default direction is smart: remembered choice (`ferry_dir_v1`) → geolocation → time-of-day (before noon → `BI-SEA`).

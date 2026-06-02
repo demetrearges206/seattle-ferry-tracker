@@ -182,7 +182,6 @@
     .next-card[data-state="oos"]::before { opacity: .5; }
     .next-card[data-state="oos"] .nc-route-wrap { opacity: .55; }
     /* Trust signal — data freshness, top-right of card header */
-    .nc-asof { font-size: 10px; font-weight: 600; color: var(--dim); letter-spacing: .2px; white-space: nowrap; flex-shrink: 0; font-variant-numeric: tabular-nums; }
     /* Lead metric — the actionable hero number, in the VESSEL color */
     .nc-lead { display: flex; flex-direction: column; gap: 2px; padding: 6px 0 2px; }
     .nc-lead-lbl { font-size: 9px; font-weight: 700; letter-spacing: 1.8px; text-transform: uppercase; color: var(--vc); line-height: 11px; }
@@ -577,7 +576,7 @@
 'use strict';
 
 // ── Build version — bump this string on every deploy ─────
-const BUILD = 'r77';
+const BUILD = 'r78';
 
 // ── Config ───────────────────────────────────────────────
 const API_KEY   = 'ff39cd9c-729e-40ac-b740-1cebec6226f9';
@@ -1130,7 +1129,6 @@ function renderSchedule() {
   const cd = (cardState !== 'fallback') ? countdownInfo(cdTarget) : { text: '', cls: '' };
 
   // ── Lead metric (the actionable hero), trust signal, last-boat ──
-  const asofText = lastUpdate ? `as of ${fmtTime(lastUpdate)}` : '';
   const lastDepTime = departures.length ? departures[departures.length - 1].depart : null;
   const showLast = lastDepTime && upcoming.length <= 3;
   let leadHTML = '';
@@ -1170,7 +1168,6 @@ function renderSchedule() {
             <span class="nc-vessel-name" style="color:${vesselClr}">${featVessel || 'Vessel TBD'}</span>
             <span class="nc-badge ${badgeCls}">${badgeText}</span>
           </div>
-          ${asofText ? `<span class="nc-asof">${asofText}</span>` : ''}
         </div>
         ${leadHTML}
         <div class="nc-times">
@@ -1353,8 +1350,20 @@ function initMapPopup() {
     const to    = v.ArrivingTerminalID  === TERMINALS.SEA.id ? 'Seattle' : 'Bainbridge';
     const eta   = v.Eta      ? parseWSDot(v.Eta)      : null;
     const left  = v.LeftDock ? parseWSDot(v.LeftDock) : null;
-    const mins  = eta ? Math.round((eta - Date.now()) / 60000) : null;
-    const etaStr = eta  ? `${fmtTime(eta)} (${mins > 0 ? mins + 'm' : 'now'})` : '—';
+    // Fall back to the scheduled arrival (same source the card uses) when the
+    // live Eta is missing, so the popup never shows a bare dash.
+    let etaTime = eta;
+    if (!etaTime && left) {
+      const saved = direction;
+      direction = (v.DepartingTerminalID === TERMINALS.SEA.id) ? 'SEA-BI' : 'BI-SEA';
+      const deps = getDepartures();
+      direction = saved;
+      let best = null, bestDiff = Infinity;
+      deps.forEach(d => { const diff = Math.abs(d.depart - left); if (diff < bestDiff) { bestDiff = diff; best = d; } });
+      if (best && bestDiff < 30 * 60000) etaTime = best.arrive;
+    }
+    const mins  = etaTime ? Math.round((etaTime - Date.now()) / 60000) : null;
+    const etaStr = etaTime ? `${fmtTime(etaTime)}${mins != null ? ` (${mins > 0 ? mins + 'm' : 'now'})` : ''}` : '—';
     const depStr = left ? fmtTime(left) : null;
     const speed  = v.Speed != null ? `${v.Speed.toFixed(1)} kts` : null;
     document.getElementById('map-popup-body').innerHTML =
@@ -1462,7 +1471,7 @@ function setStatus(state) {
   const dot  = document.getElementById('liveDot');
   const text = document.getElementById('liveText');
   if (state === 'loading')  { dot.className = 'live-dot off';     text.textContent = 'Refreshing…'; }
-  else if (state === 'live')    { dot.className = 'live-dot live';    text.textContent = lastUpdate ? `Updated ${elapsed(lastUpdate)}` : 'Live'; }
+  else if (state === 'live')    { dot.className = 'live-dot live';    text.textContent = lastUpdate ? `Updated ${fmtTime(lastUpdate)}` : 'Live'; }
   else if (state === 'partial') { dot.className = 'live-dot partial'; text.textContent = 'Schedule · vessels offline'; }
   else if (state === 'stale')   { dot.className = 'live-dot stale';   text.textContent = lastUpdate ? `Stale · ${elapsed(lastUpdate)}` : 'Offline'; }
 
