@@ -173,11 +173,12 @@
       padding: 18px 20px 16px;
       display: flex; flex-direction: column; gap: 5px;
     }
-    /* Eyebrow hairline: a thin ribbon across the card top, in the VESSEL color (matches the map) */
+    /* Eyebrow: the card's top edge tinted in the VESSEL color, fading into the
+       surface so it reads as part of the card (not a bar resting on top). */
     .next-card::before {
-      content: ''; position: absolute; left: -1px; right: -1px; top: -1px; height: 3px;
-      border-radius: 14px 14px 0 0; background: var(--vc, transparent);
-      box-shadow: 0 0 12px color-mix(in oklab, var(--vc, transparent) 45%, transparent);
+      content: ''; position: absolute; left: 0; right: 0; top: 0; height: 8px; pointer-events: none;
+      border-radius: 14px 14px 0 0;
+      background: linear-gradient(180deg, var(--vc, transparent), color-mix(in oklab, var(--vc, transparent) 0%, transparent));
     }
     .next-card[data-state="oos"]::before { opacity: .5; }
     .next-card[data-state="oos"] .nc-route-wrap { opacity: .55; }
@@ -576,7 +577,7 @@
 'use strict';
 
 // ── Build version — bump this string on every deploy ─────
-const BUILD = 'r78';
+const BUILD = 'r79';
 
 // ── Config ───────────────────────────────────────────────
 const API_KEY   = 'ff39cd9c-729e-40ac-b740-1cebec6226f9';
