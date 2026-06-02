@@ -22,6 +22,12 @@ Real-time WSDOT Seattle ↔ Bainbridge Island ferry tracker. Single deliverable:
 - `lvApproaching` state: vessel on return leg toward departure terminal shows sailing/arriving (not at-dock)
 - `lvAtOther` state: vessel docked at the wrong terminal (arrival side) — card shows "AT BBI" or "AT SEA" with next scheduled departure
 
+## Visual-feedback tooling
+
+- The tap-to-comment + screenshot tool is a **separate living repo** cloned at `/workspaces/visual-feedback` (`github.com/demetrearges206/claude-visual-feedback`) — NOT part of ferry. To improve it for all projects, edit it there and `git push`; see its `ARCHITECTURE.md`.
+- When the user says they **sent feedback/a comment**, read **`.vf-comments.json`** in this repo root (the tool writes here via `dev.sh`'s `--out`). Each comment has the exact CSS selector. Safe to delete after acting.
+- Run/resume the tool: `bash /workspaces/visual-feedback/dev.sh /workspaces/seattle-ferry-tracker 3000` (this is the legacy Codespace with no devcontainer, so the server/port aren't auto-managed here).
+
 ## File map
 
 - `ferry.html` — entire app (~123 KB; grows after the deploy step inlines Inter as base64)
