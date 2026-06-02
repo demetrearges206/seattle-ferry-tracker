@@ -577,7 +577,7 @@
 'use strict';
 
 // ── Build version — bump this string on every deploy ─────
-const BUILD = 'r79';
+const BUILD = 'r80';
 
 // ── Config ───────────────────────────────────────────────
 const API_KEY   = 'ff39cd9c-729e-40ac-b740-1cebec6226f9';
@@ -601,6 +601,10 @@ let waitData     = [];
 let bulletinData = [];
 let direction    = 'SEA-BI';
 let featuredVessel = null;   // name of the vessel shown in the featured card (drawn on top in the map)
+// Hysteresis for the featured vessel: only adopt a new boat after it persists 2
+// consecutive polls (filters WSDOT's transient post-dock position blips). Reset on
+// direction change so tab switches are instant.
+let featStick = { dir: null, name: null, pending: null, count: 0 };
 let schedOpen        = false;
 let vesselStripOpen  = false;
 let cdTimer      = null;
@@ -968,19 +972,49 @@ function renderSchedule() {
     return;
   }
 
-  const next = upcoming[0];
-  const rest = upcoming.slice(1, 4);
+  const next0 = upcoming[0];
 
   // Feature the vessel actually positioned for this direction (live), not the
   // schedule's planned hull — they can disagree when boats swap runs.
   const dirDep = direction === 'SEA-BI' ? TERMINALS.SEA.id : TERMINALS.BI.id;
   const dirArr = direction === 'SEA-BI' ? TERMINALS.BI.id  : TERMINALS.SEA.id;
   const dirLive = getDirectionVessel(dirDep, dirArr);
-  const lv = dirLive || getLiveVessel(next.vessel);
-  const featVessel = lv ? lv.VesselName : next.vessel;
+  const rawName = dirLive ? dirLive.VesselName : (getLiveVessel(next0.vessel) ? next0.vessel : null);
+
+  // ── Debounce the featured vessel (hysteresis) ──
+  if (direction !== featStick.dir) {
+    // direction changed (tab switch) → adopt immediately, no lag
+    featStick = { dir: direction, name: rawName, pending: null, count: 0 };
+  } else if (rawName && rawName !== featStick.name) {
+    if (rawName === featStick.pending) featStick.count++;
+    else { featStick.pending = rawName; featStick.count = 1; }
+    if (featStick.name === null || featStick.count >= 2) {
+      featStick.name = rawName; featStick.pending = null; featStick.count = 0;
+    }
+  } else {
+    featStick.pending = null; featStick.count = 0; // steady (or no data) → keep current
+  }
+
+  const lv = getLiveVessel(featStick.name) || dirLive || getLiveVessel(next0.vessel);
+  const featVessel = lv ? lv.VesselName : next0.vessel;
   featuredVessel = featVessel;
   const lvOnRoute = lv && !lv.AtDock &&
     lv.DepartingTerminalID === dirDep && lv.ArrivingTerminalID === dirArr;
+
+  // ── Sailing-lock ──
+  // When the featured boat is underway on our route, anchor the active sailing to
+  // the trip it actually left on (scheduled departure closest to LeftDock), so the
+  // card's times track that boat's trip instead of jumping to upcoming[0].
+  let next = next0;
+  if (lvOnRoute && lv.LeftDock) {
+    const left = parseWSDot(lv.LeftDock);
+    if (left) {
+      let best = null, bestDiff = Infinity;
+      departures.forEach(d => { const dd = Math.abs(d.depart - left); if (dd < bestDiff) { bestDiff = dd; best = d; } });
+      if (best && bestDiff < 30 * 60000) next = best;
+    }
+  }
+  const rest = upcoming.filter(d => d.depart !== next.depart).slice(0, 3);
   const liveEta = lvOnRoute ? parseWSDot(lv.Eta) : null;
 
   // Vessel sailing the opposite direction, heading toward our departure terminal

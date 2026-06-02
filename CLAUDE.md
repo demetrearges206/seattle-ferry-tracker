@@ -4,9 +4,10 @@
 
 Real-time WSDOT Seattle ↔ Bainbridge Island ferry tracker. Single deliverable: `ferry.html` — a fully self-contained HTML file with all CSS and JS inlined (no map library, no Leaflet — the map is a hand-built inline SVG). No build step. Deployed to GitHub Pages at `https://demetrearges206.github.io/seattle-ferry-tracker/ferry.html`.
 
-## Current state (r79)
+## Current state (r80)
 
-- `const BUILD = 'r79'` in ferry.html — bump on every change
+- `const BUILD = 'r80'` in ferry.html — bump on every change
+- **r80:** card-stability fix for the "constantly changing" featured card. (1) **Featured-vessel hysteresis** (`featStick` global): only adopt a new boat after it persists **2 consecutive polls** — filters WSDOT's transient post-dock position blips; resets on direction change so tab switches stay instant. (2) **Sailing-lock**: when the featured boat is underway on-route, `next` (active sailing) is anchored to the trip it actually left on (scheduled departure closest to `LeftDock`), not `upcoming[0]`; `rest` now excludes the active sailing by `depart` instead of `slice(1,4)`. From a visual-feedback tool comment. **Not runtime-verifiable headless (schedule API is CORS-blocked from localhost) — needs real-device observation.**
 - **r79:** eyebrow ribbon reworked — was a 3px bar at `top:-1px` with an outward `box-shadow` glow (read as "resting on top" of the card); now a flush `top:0` gradient that fades the vessel color (`--vc`) into the card surface over 8px, so it reads as the card's own tinted top edge. From a visual-feedback tool comment.
 - **r78:** (1) removed the card's `.nc-asof` "as of HH:MM" stamp — the header now shows the refresh **clock time** (`Updated 6:21 AM` via `fmtTime`, was relative `elapsed()`); (2) vessel-popup ETA no longer shows a bare `—` when live `Eta` is missing — it falls back to the **scheduled arrival** (matches the card) by temporarily swapping `direction` and matching the sailing closest to `LeftDock`. Both came from visual-feedback tool comments.
 - **r77:** removed Leaflet and the vessel-popup mini-map entirely (r75 had added them; they provided no value over the existing SVG map). The vessel-tap popup is text-only. See [Map implementation](#map-implementation).
