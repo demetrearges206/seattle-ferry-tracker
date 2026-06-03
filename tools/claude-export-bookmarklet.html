@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Claude Conversation Exporter — bookmarklet</title>
+<style>
+  :root { color-scheme: dark; }
+  body {
+    font: 16px/1.6 system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+    max-width: 720px; margin: 0 auto; padding: 32px 20px 80px;
+    background: #0e1117; color: #e6edf3;
+  }
+  h1 { font-size: 1.6rem; }
+  h2 { font-size: 1.15rem; margin-top: 2rem; }
+  a.bm {
+    display: inline-block; padding: 12px 20px; margin: 8px 0;
+    background: #d97757; color: #1a1a1a; font-weight: 700;
+    border-radius: 8px; text-decoration: none; cursor: grab;
+  }
+  a.bm:active { cursor: grabbing; }
+  code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+  pre {
+    background: #161b22; border: 1px solid #30363d; border-radius: 8px;
+    padding: 14px; overflow-x: auto; font-size: 12px; white-space: pre-wrap;
+    word-break: break-all;
+  }
+  button {
+    background: #21262d; color: #e6edf3; border: 1px solid #30363d;
+    border-radius: 6px; padding: 8px 14px; cursor: pointer; font-size: 14px;
+  }
+  button:hover { background: #30363d; }
+  .note { color: #9da7b3; font-size: 0.92rem; }
+  kbd {
+    background: #21262d; border: 1px solid #30363d; border-bottom-width: 2px;
+    border-radius: 4px; padding: 1px 6px; font-size: 0.85em;
+  }
+  ol { padding-left: 22px; }
+</style>
+</head>
+<body>
+<h1>📋 Claude Conversation Exporter</h1>
+<p>A bookmarklet that scrapes the current <code>claude.ai</code> conversation,
+formats it with clear <code>## Human</code> / <code>## Assistant</code> role
+markers (optimal for feeding into another AI), then lets you
+<strong>copy it to the clipboard</strong> or <strong>download a <code>.txt</code> file</strong>.</p>
+
+<h2>Install</h2>
+<p>Drag this button to your bookmarks bar:</p>
+<p><a class="bm" id="bmLink" href="#">Export Claude Chat</a></p>
+<p class="note">No bookmarks bar visible? Press <kbd>Ctrl/Cmd</kbd>+<kbd>Shift</kbd>+<kbd>B</kbd>
+to show it, then drag. On mobile, see the manual steps below.</p>
+
+<h2>Use</h2>
+<ol>
+  <li>Open any conversation on <code>claude.ai</code>.</li>
+  <li>Scroll to the top once so the whole thread is loaded into the page
+      (long chats lazy-load — scrolling forces older turns to render).</li>
+  <li>Click the <strong>Export Claude Chat</strong> bookmark.</li>
+  <li>A dialog asks: <strong>OK</strong> = copy to clipboard, <strong>Cancel</strong> = download <code>.txt</code>.</li>
+</ol>
+
+<h2>Source <button onclick="copySrc()">Copy code</button></h2>
+<p class="note">If you'd rather paste it into a bookmark manually, copy this and paste
+it into the bookmark's URL/Location field. (Manual route is the way to add it on
+iOS/Android: create any bookmark, then edit it and replace the URL with this.)</p>
+<pre id="src"></pre>
+
+<script>
+// ---- The bookmarklet source (kept here as the single source of truth) ----
+function CLAUDE_EXPORT() {
+  var sel = '[data-testid="user-message"], .font-claude-message, .font-claude-response';
+  var nodes = Array.prototype.slice.call(document.querySelectorAll(sel));
+  if (!nodes.length) {
+    alert('No Claude messages found.\nAre you on a claude.ai conversation page? Try scrolling up to load the whole thread first.');
+    return;
+  }
+  var title = (document.title || 'Claude conversation')
+    .replace(/\s*[-|–]\s*Claude.*$/i, '').trim() || 'Claude conversation';
+  var lines = ['# ' + title, '', '_Exported ' + new Date().toISOString() + ' · ' + nodes.length + ' messages_', ''];
+  nodes.forEach(function (n) {
+    var role = n.matches('[data-testid="user-message"]') ? 'Human' : 'Assistant';
+    var text = (n.innerText || '').replace(/ /g, ' ').trim();
+    if (!text) return;
+    lines.push('## ' + role, '', text, '', '---', '');
+  });
+  var out = lines.join('\n');
+  var fn = title.replace(/[^a-z0-9]+/gi, '_').replace(/^_|_$/g, '').slice(0, 60) || 'claude_chat';
+  function download() {
+    var blob = new Blob([out], { type: 'text/plain;charset=utf-8' });
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = fn + '.txt';
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function () { URL.revokeObjectURL(a.href); }, 1000);
+  }
+  if (confirm('Export ' + nodes.length + ' messages.\n\nOK = copy to clipboard\nCancel = download .txt file')) {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(out).then(
+        function () { alert('Copied ' + nodes.length + ' messages to the clipboard.'); },
+        function () { download(); }
+      );
+    } else { download(); }
+  } else { download(); }
+}
+
+// Build the "javascript:" URI from the function body so the draggable link
+// and the printed source can never drift apart.
+var body = CLAUDE_EXPORT.toString();
+var bookmarklet = 'javascript:(' + body + ')();';
+document.getElementById('bmLink').setAttribute('href', bookmarklet);
+document.getElementById('src').textContent = bookmarklet;
+
+function copySrc() {
+  navigator.clipboard.writeText(bookmarklet).then(function () {
+    alert('Bookmarklet source copied.');
+  });
+}
+</script>
+</body>
+</html>
